@@ -1,0 +1,80 @@
+Brief description of the morphological encoding in use at the Eep
+Talstra Centre for Bible and Computer.
+
+(Taking Biblical Hebrew as an example.)
+
+Hebrew letters have an ASCII transliteration. There is a one-to-one
+correspondence between the Hebrew letter and the ASCII character.
+
+This is the surface text (consonants only) of Genesis 1:1.
+
+BR>CJT BR> >LHJM >T HCMJM W>T H>RY
+
+1) The encoding splits the graphical words into analytical words by
+   separating them by hyphens. "BR>CJT" (inbeginning) becomes "B-R>CJT"
+   (in beginning).
+
+B-R>CJT BR> >LHJM >T H-CMJM W->T H->RY
+
+2) It splits the analytical words into morphs, these are the realised
+   form of the morphemes. Also empty realisations are accounted for.
+
+B-R>CJT| BR>| >LH|JM >T H-CMJ|M W->T H->RY|
+
+3) But it does not do this with vertical bars, but with markers that
+   indicate the morpheme type. There are seven morpheme types, each
+   with its own marker.
+
+   Preformative (pfm) has !
+   Verbal stem morpheme (vbs) has ]
+   Verbal ending (vbe) has [
+   Nominal ending (nme) has /
+   Univalent final (uvf) has ~
+   Pronominal suffix (prs) has +
+
+   (The seventh morpheme type is the vowel pattern mark and will be
+   addressed later, because it is nonconcatenative.)
+   The prefixes, morphemes that come before the lexeme (pfm and vbs),
+   have the mark both before and after it (as in !J!).
+   The suffixes, morphemes that come after the lexeme (vbe, nme, uvf
+   and prs), have one mark before it (as in /JM).
+
+B-R>CJT/ BR>[ >LH/JM >T H-CMJ/M W->T H->RY/
+
+4) The encoding not only assigns the morpheme type to the morph, but
+   also the paradigmatic form of the morpheme. In doing so it
+   identifies the morph as an instance of a certain morpheme. For
+   example, there are twelve morphemes of the type nominal ending,
+   namely "", "H", "WT", "WTJ", "J", "J=", "JM", "JM=", "JN", "T",
+   "TJ", "TJM", of which 82 different realisations occur (if you take
+   vowels into account). The nominal ending "JM", for instance, is
+   found as "IJM", "IM", "JM" or "M". (The '=' is used to distinguish
+   paradigmatic forms with the same name, as in Elisabeth I and II.)
+
+   This "JM" occurs in our example at the end of "H-CMJ/M", where the
+   encoding needs to say: the "M" is the realisation of the nominal
+   ending "JM". It does this by indicating the string difference
+   between the paradigmatic form and the realised form. A '(' marks a
+   letter not present in the realised form and an '&' marks a letter
+   not present in the paradigmatic form. Hence the encoding becomes
+   "/(JM".
+
+   The paradigmatic forms are abstracta, the realised forms concreta.
+
+B-R>CJT/ BR>[ >LH/JM >T H-CMJ/(JM W->T H->RY/
+
+5) As all affixes (morphemes that come before or after the lexeme) have
+   their markers, the lexeme itself need not have a marker of its own,
+   only its paradigmatic form has to be encoded. In "CMJ/(JM", the
+   lexeme CMJM is realised as CMJ, so we get "CMJ(M/(JM".
+
+B-R>CJT/ BR>[ >LH(J(M/JM >T H-CMJ(M/(JM W->T H->RY/
+
+6) Nonconcatenative morphemes, morphemes that share their realisation
+   with the lexeme, but are not lexemes themselves, are marked
+   with a ":" followed by one or more lower case letters. This is
+   a bit of a make-shift solution, but it preserves the information
+   these morphemes provide. The vowel pattern on >RY (visible
+   in the vocalised input) is that of the absolute state, hence :a.
+
+B-R>CJT/ BR>[ >LH(J(M/JM >T H-CMJ(M/(JM W->T H->RY/:a
