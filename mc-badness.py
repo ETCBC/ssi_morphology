@@ -349,7 +349,7 @@ def badness(d):
    assert(not any(d < 0))
    r = 0
    for x in d:
-      r = Base * r + x
+      r = Base * r + min(x, Base - 1)
    return r
 
 
@@ -362,7 +362,7 @@ def mc_parse(s):
    if r:
       return r
    else:
-      return ([], 1)
+      return ([], Base)
 
 
 def code_distance(s1, s2):
