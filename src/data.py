@@ -13,7 +13,7 @@ encode_string       Convert a string to a Torch Tensor, using a mapping
 decode_string       Convert a Torch Tensor to a string, using a mapping
 
 Dataset wrappers:
-    HebrewBible     a pytorch Dataset around the hebrew bibble, returns verses.
+    HebrewVerses    a pytorch Dataset around the hebrew bibble, returns verses.
 
 """
 import collections
@@ -117,7 +117,7 @@ OUTPUT_WORD_TO_IDX = {
     }
 
 
-class HebrewBible(Dataset):
+class HebrewVerses(Dataset):
     """A Pytorch wrapper around the hebrew bible text. Processed per verse."""
 
     def __init__(self, input_filename: str, output_filename: str,
@@ -170,6 +170,81 @@ class HebrewBible(Dataset):
 
         # data properties from the output
         bo, ch, ve, text = tuple(self.output_data[idx].strip().split('\t'))
+
+        # reduce output to simpler form
+        text = mc_reduce(text)
+
+        sample["output"] = text
+        sample["encoded_output"] = encode_string(text, OUTPUT_WORD_TO_IDX)
+
+        return sample
+
+
+class HebrewWords(Dataset):
+    """A Pytorch wrapper around the hebrew bible text. Processed per word."""
+
+    def __init__(self, input_filename: str, output_filename: str,
+                 transform=None):
+        """
+        Args:
+            input_filename (str)
+            output_filename (str)
+            transform (callable, optional): Optional transform to be applied
+                            on a sample.
+
+        The files are formatted as one verse per line, with tab separated
+        metadata: book chapter verse text
+
+        Note: output is reduced using the mc_reduce function
+
+        The dataset contains hashes with:
+            text: str
+            output: str
+            encoded_text: Tensor
+            encoded_output: Tensor
+        """
+        with open(input_filename, 'r') as f:
+            input_verses = f.readlines()
+
+        with open(output_filename, 'r') as f:
+            output_verses = f.readlines()
+
+        assert(len(input_verses) == len(output_verses))
+
+        self.input_data = []
+        self.output_data = []
+        for i in range(len(input_verses)):
+            bo, ch, ve, text = tuple(input_verses[i].strip().split('\t'))
+            bo, ch, ve, output = tuple(output_verses[i].strip().split('\t'))
+
+            input_words = text.split()
+            output_words = output.split()
+            if (len(input_words) == len(output_words)):
+                self.input_data += input_words
+                self.output_data += output_words
+            else:
+                print("Encoding issue with {bo} {ch} {ve} : mismatch in number of words")
+                print(input_words)
+                print(output_words)
+
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.input_data)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        # data properties from the intput
+        text = self.input_data[idx]
+        sample = {
+                "text": text,
+                "encoded_text": encode_string(text, INPUT_WORD_TO_IDX)
+                }
+
+        # data properties from the output
+        text = self.output_data[idx]
 
         # reduce output to simpler form
         text = mc_reduce(text)

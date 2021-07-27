@@ -6,7 +6,7 @@ import torch.optim as optim
 from torch.utils.data import random_split, DataLoader
 from torchinfo import summary
 import time
-from data import HebrewBible, MAX_LENGTH, SOS_token
+from data import HebrewWords, MAX_LENGTH, SOS_token
 from data import INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX
 from model import HebrewEncoder, HebrewDecoder, device
 from evaluate import evaluate
@@ -23,7 +23,7 @@ def handler(signal_received, frame):
 
 # https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html
 def train(training_data, evaluation_data,
-          max_epoch=100, torch_seed=42, hidden_dim=64, learning_rate=0.1):
+          max_epoch=100, torch_seed=42, hidden_dim=128, learning_rate=0.1):
     # make the runs as repeatable as possible
     torch.manual_seed(torch_seed)
 
@@ -87,7 +87,7 @@ def train(training_data, evaluation_data,
             decoder_optimizer.step()
 
             # every 50 steps, print some diagnostics
-            if counter % 50 == 0:
+            if counter % 500 == 0:
                 oldtimer = timer
                 timer = time.time()
                 output = evaluate(encoder, decoder, verse['text'])
@@ -121,7 +121,7 @@ def train(training_data, evaluation_data,
 
 if __name__ == '__main__':
     # load the dataset, and split 70/30 in test/eval
-    bible = HebrewBible('data/t-in_voc', 'data/t-out')
+    bible = HebrewWords('data/t-in_voc', 'data/t-out')
     len_train = int(0.7 * len(bible))
     len_eval = len(bible) - len_train
     training_data, evaluation_data = random_split(
@@ -132,4 +132,4 @@ if __name__ == '__main__':
     # Tell Python to run the handler() function when SIGINT is recieved
     signal(SIGINT, handler)
 
-    train(training_loader, evaluation_data)
+    train(training_loader, evaluation_data, learning_rate=1e-3)

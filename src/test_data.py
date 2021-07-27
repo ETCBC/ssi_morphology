@@ -2,7 +2,7 @@
 
 from data import INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX
 from data import encode_string, decode_string, mc_reduce, mc_expand
-from data import HebrewBible
+from data import HebrewVerses
 
 
 def test_encode_decode_input():
@@ -22,7 +22,7 @@ def test_reduce_encode_decode_expand_output():
 
 
 def test_hebrewbible():
-    bible = HebrewBible('data/t-in_voc', 'data/t-out')
+    bible = HebrewVerses('data/t-in_voc', 'data/t-out')
     verse = bible[0]
     assert(verse['book'] == 'Gen')
     assert(verse['chapter'] == 1)
