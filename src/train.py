@@ -1,12 +1,24 @@
 import sys
+from signal import signal, SIGINT
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import random_split
+from torchinfo import summary
 import time
 from data import HebrewBible, MAX_LENGTH, SOS_token
 from data import INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX
 from model import HebrewEncoder, HebrewDecoder, device
+from evaluate import evaluate
+from torch.utils.tensorboard import SummaryWriter
+
+abort = False  # Global variable to catch Ctrl-C
+
+
+def handler(signal_received, frame):
+    global abort
+    print('SIGINT or CTRL-C detected. Exiting gracefully')
+    abort = True
 
 
 # https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html
@@ -18,17 +30,28 @@ def train(training_data, evaluation_data,
     encoder = HebrewEncoder(input_dim=len(INPUT_WORD_TO_IDX), hidden_dim=hidden_dim)
     decoder = HebrewDecoder(hidden_dim=hidden_dim, output_dim=len(OUTPUT_WORD_TO_IDX))
 
-    print(encoder)
-    print(decoder)
-
     loss_function = nn.NLLLoss()
-    encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
-    decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
+    encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
+    decoder_optimizer = optim.Adam(decoder.parameters(), lr=learning_rate)
+
+    # tensorboard
+    log_dir = f'runs/{hidden_dim}hidden_{torch_seed}seed_{learning_rate}lr'
+    writer = SummaryWriter(log_dir)
+
+    # print info to stdout
+    summary(encoder)
+    summary(decoder)
 
     timer = time.time()
     counter = 0
     for epoch in range(max_epoch):
+        if abort:
+            break
+
         for verse in training_data:
+            if abort:
+                break
+
             counter += 1
             encoder_optimizer.zero_grad()
             decoder_optimizer.zero_grad()
@@ -63,10 +86,37 @@ def train(training_data, evaluation_data,
             encoder_optimizer.step()
             decoder_optimizer.step()
 
+            # every 50 steps, print some diagnostics
             if counter % 50 == 0:
                 oldtimer = timer
                 timer = time.time()
+                output = evaluate(encoder, decoder, verse['text'])
                 print(counter, epoch, timer - oldtimer,  loss.item() / output_length)
+                print('verse:  ', verse['text'])
+                print('gold:   ', verse['output'])
+                print('system: ', output)
+                print(' -- ')
+                writer.add_text('sample', verse['text'] + "\n" + output, global_step=counter)
+                writer.add_scalar('Loss/train', loss.item(), global_step=counter)
+
+                # for all parameters, write the mean to tensorboard
+                for name, val in encoder.named_parameters():
+                    writer.add_scalar('encoder.' + name, torch.mean(val), global_step=counter)
+                for name, val in decoder.named_parameters():
+                    writer.add_scalar('decoder.' + name, torch.mean(val), global_step=counter)
+
+    # write summary to tensorboard
+    writer.add_hparams({
+        "hidden_dim": hidden_dim,
+        "torch_seed": torch_seed,
+        "learning_rate": learning_rate,
+        "loss_function": type(loss_function).__name__,
+        "optimizer_encoder": type(encoder_optimizer).__name__,
+        "optimizer_decoder": type(decoder_optimizer).__name__
+    }, {
+        "hparam/loss": 0.0
+    })
+    writer.close()
 
 
 if __name__ == '__main__':
@@ -76,5 +126,8 @@ if __name__ == '__main__':
     len_eval = len(bible) - len_train
     training_data, evaluation_data = random_split(
             bible, [len_train, len_eval], generator=torch.Generator().manual_seed(42))
+
+    # Tell Python to run the handler() function when SIGINT is recieved
+    signal(SIGINT, handler)
 
     train(training_data, evaluation_data)
