@@ -199,11 +199,14 @@ def decode_string(t, d:dict, strip_eos=True):
     inv_d = {v: k for k, v in d.items()}
     seq = ""
     for c in list(t):
+        if isinstance(c, torch.Tensor):
+            c = c.item()
+
         if strip_eos:
-            if c.item() != EOS_token:
-                seq = seq + inv_d[c.item()]
+            if c != EOS_token:
+                seq = seq + inv_d[c]
         else:
-            seq = seq + inv_d[c.item()]
+            seq = seq + inv_d[c]
     return seq
 
 
