@@ -3,7 +3,7 @@ from signal import signal, SIGINT
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import random_split
+from torch.utils.data import random_split, DataLoader
 from torchinfo import summary
 import time
 from data import HebrewBible, MAX_LENGTH, SOS_token
@@ -127,7 +127,9 @@ if __name__ == '__main__':
     training_data, evaluation_data = random_split(
             bible, [len_train, len_eval], generator=torch.Generator().manual_seed(42))
 
+    training_loader = DataLoader(training_data, batch_size=None, shuffle=True)
+
     # Tell Python to run the handler() function when SIGINT is recieved
     signal(SIGINT, handler)
 
-    train(training_data, evaluation_data)
+    train(training_loader, evaluation_data)
