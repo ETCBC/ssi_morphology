@@ -63,8 +63,13 @@ def score(encoder, decoder, dataset, max_length=MAX_LENGTH):
         if output == target:  # fully correct transcription
             correct += 1
 
+    if total > 0:
+        accuracy = (1.0 * correct) / (1.0 * total)
+    else:
+        accuracy = 0.0
+
     return {
         "total": total,
         "correct": correct,
-        "accuracy": (1.0 * correct) / (1.0 * total)
+        "accuracy": accuracy
     }
