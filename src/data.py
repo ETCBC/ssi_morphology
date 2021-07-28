@@ -223,7 +223,7 @@ class HebrewWords(Dataset):
                 self.input_data += input_words
                 self.output_data += output_words
             else:
-                print("Encoding issue with {bo} {ch} {ve} : mismatch in number of words")
+                print(f"Encoding issue with {bo} {ch} {ve} : mismatch in number of words")
                 print(input_words)
                 print(output_words)
 
