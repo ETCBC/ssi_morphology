@@ -1,55 +1,41 @@
 import sys
-from signal import signal, SIGINT
+from signal import signal, SIGINT, SIG_DFL
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import random_split, DataLoader
 from torchinfo import summary
 import time
+from config import device, check_abort, abort_handler
 from data import HebrewWords, MAX_LENGTH, SOS_token
 from data import INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX
-from model import HebrewEncoder, HebrewDecoder, device
-from evaluate import evaluate
+from model import HebrewEncoder, HebrewDecoder
+from evaluate import evaluate, score
 from torch.utils.tensorboard import SummaryWriter
-
-abort = False  # Global variable to catch Ctrl-C
-
-
-def handler(signal_received, frame):
-    global abort
-    print('SIGINT or CTRL-C detected. Exiting gracefully')
-    abort = True
 
 
 # https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html
-def train(training_data, evaluation_data,
-          max_epoch=100, torch_seed=42, hidden_dim=128, learning_rate=0.1):
+def train(training_data=None, evaluation_data=None,
+          encoder=None, decoder=None,
+          loss_function=None, log_dir=None,
+          max_epoch=100, torch_seed=42, learning_rate=0.1):
     # make the runs as repeatable as possible
     torch.manual_seed(torch_seed)
 
-    encoder = HebrewEncoder(input_dim=len(INPUT_WORD_TO_IDX), hidden_dim=hidden_dim)
-    decoder = HebrewDecoder(hidden_dim=hidden_dim, output_dim=len(OUTPUT_WORD_TO_IDX))
-
-    loss_function = nn.NLLLoss()
-    encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
-    decoder_optimizer = optim.Adam(decoder.parameters(), lr=learning_rate)
+    # Tell Python to run the abort_handler() function when SIGINT is recieved
+    signal(SIGINT, abort_handler)
 
     # tensorboard
-    log_dir = f'runs/{hidden_dim}hidden_{torch_seed}seed_{learning_rate}lr'
     writer = SummaryWriter(log_dir)
-
-    # print info to stdout
-    summary(encoder)
-    summary(decoder)
 
     timer = time.time()
     counter = 0
     for epoch in range(max_epoch):
-        if abort:
+        if check_abort():
             break
 
         for verse in training_data:
-            if abort:
+            if check_abort():
                 break
 
             counter += 1
@@ -87,7 +73,7 @@ def train(training_data, evaluation_data,
             decoder_optimizer.step()
 
             # every 50 steps, print some diagnostics
-            if counter % 500 == 0:
+            if counter % 50 == 0:
                 oldtimer = timer
                 timer = time.time()
                 output = evaluate(encoder, decoder, verse['text'])
@@ -105,9 +91,13 @@ def train(training_data, evaluation_data,
                 for name, val in decoder.named_parameters():
                     writer.add_scalar('decoder.' + name, torch.mean(val), global_step=counter)
 
+                results = score(encoder, decoder, evaluation_data)
+                writer.add_scalar('Eval/accuracy', results['accuracy'], global_step=counter)
+
+
     # write summary to tensorboard
     writer.add_hparams({
-        "hidden_dim": hidden_dim,
+        "hidden_dim": encoder.hidden_dim,
         "torch_seed": torch_seed,
         "learning_rate": learning_rate,
         "loss_function": type(loss_function).__name__,
@@ -118,18 +108,50 @@ def train(training_data, evaluation_data,
     })
     writer.close()
 
+    # Restore default behaviour for Ctrl-c
+    signal(SIGINT, SIG_DFL)
+
 
 if __name__ == '__main__':
+    # network and training settings
+    hidden_dim = 128
+    torch_seed = 42
+    learning_rate = 1e-3
+
     # load the dataset, and split 70/30 in test/eval
     bible = HebrewWords('data/t-in_voc', 'data/t-out')
     len_train = int(0.7 * len(bible))
     len_eval = len(bible) - len_train
+    # alwyas use the same seed for train/test split
     training_data, evaluation_data = random_split(
             bible, [len_train, len_eval], generator=torch.Generator().manual_seed(42))
 
     training_loader = DataLoader(training_data, batch_size=None, shuffle=True)
 
-    # Tell Python to run the handler() function when SIGINT is recieved
-    signal(SIGINT, handler)
+    # create the network
+    encoder = HebrewEncoder(input_dim=len(INPUT_WORD_TO_IDX), hidden_dim=hidden_dim)
+    decoder = HebrewDecoder(hidden_dim=hidden_dim, output_dim=len(OUTPUT_WORD_TO_IDX))
 
-    train(training_loader, evaluation_data, learning_rate=1e-3)
+    # function to optimize
+    loss_function = nn.NLLLoss()
+
+    # log settings
+    log_dir = f'runs/{hidden_dim}hidden_{torch_seed}seed_{learning_rate}lr'
+
+    # optimization strategy
+    encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
+    decoder_optimizer = optim.Adam(decoder.parameters(), lr=learning_rate)
+
+    # print info to stdout
+    summary(encoder)
+    summary(decoder)
+
+    train(training_data=training_loader,
+          evaluation_data=evaluation_data,
+          encoder=encoder,
+          decoder=decoder,
+          loss_function=loss_function,
+          log_dir=log_dir,
+          torch_seed=torch_seed,
+          learning_rate=learning_rate
+          )
