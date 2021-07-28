@@ -9,7 +9,7 @@ import time
 from config import device, check_abort, abort_handler
 from data import HebrewWords, MAX_LENGTH, SOS_token
 from data import INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX
-from model import HebrewEncoder, HebrewDecoder
+from model import HebrewEncoder, HebrewDecoder, save_encoder_decoder
 from evaluate import evaluate, score
 from torch.utils.tensorboard import SummaryWriter
 
@@ -94,7 +94,7 @@ def train(training_data=None, evaluation_data=None,
         # per epoch evaluation
         results = score(encoder, decoder, evaluation_data)
         writer.add_scalar('Eval/accuracy', results['accuracy'], global_step=counter)
-
+        save_encoder_decoder(encoder, decoder, log_dir, filename=f'model.{epoch}.pt')
 
     # write summary to tensorboard
     writer.add_hparams({
