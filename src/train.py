@@ -72,8 +72,8 @@ def train(training_data=None, evaluation_data=None,
             encoder_optimizer.step()
             decoder_optimizer.step()
 
-            # every 50 steps, print some diagnostics
-            if counter % 50 == 0:
+            # every N steps, print some diagnostics
+            if counter % 500 == 0:
                 oldtimer = timer
                 timer = time.time()
                 output = evaluate(encoder, decoder, verse['text'])
@@ -91,8 +91,9 @@ def train(training_data=None, evaluation_data=None,
                 for name, val in decoder.named_parameters():
                     writer.add_scalar('decoder.' + name, torch.mean(val), global_step=counter)
 
-                results = score(encoder, decoder, evaluation_data)
-                writer.add_scalar('Eval/accuracy', results['accuracy'], global_step=counter)
+        # per epoch evaluation
+        results = score(encoder, decoder, evaluation_data)
+        writer.add_scalar('Eval/accuracy', results['accuracy'], global_step=counter)
 
 
     # write summary to tensorboard
@@ -127,6 +128,9 @@ if __name__ == '__main__':
             bible, [len_train, len_eval], generator=torch.Generator().manual_seed(42))
 
     training_loader = DataLoader(training_data, batch_size=None, shuffle=True)
+    print('Training / Eval split: 70/30 using manual_seed=42.')
+    print(f'Training size:   {len(training_data)}')
+    print(f'Evaluation size: {len(evaluation_data)}')
 
     # create the network
     encoder = HebrewEncoder(input_dim=len(INPUT_WORD_TO_IDX), hidden_dim=hidden_dim)
