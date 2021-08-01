@@ -1,8 +1,8 @@
 """Unit tests for data loading and conversion"""
 
-from data import INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX
-from data import encode_string, decode_string, mc_reduce, mc_expand
-from data import HebrewVerses
+from .data import INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX
+from .data import encode_string, decode_string, mc_reduce, mc_expand
+from .data import HebrewVerses
 
 
 def test_encode_decode_input():

@@ -20,7 +20,7 @@ import collections
 import re
 import torch
 from torch.utils.data import Dataset
-from config import device
+from .config import device
 
 MAX_LENGTH = 500
 
@@ -165,7 +165,7 @@ class HebrewVerses(Dataset):
                 "chapter": int(ch),
                 "verse": int(ve),
                 "text": text,
-                "encoded_text": encode_string(text, INPUT_WORD_TO_IDX)
+                "encoded_text": encode_string(text, INPUT_WORD_TO_IDX, add_sos=False, add_eos=True)
                 }
 
         # data properties from the output
@@ -175,7 +175,7 @@ class HebrewVerses(Dataset):
         text = mc_reduce(text)
 
         sample["output"] = text
-        sample["encoded_output"] = encode_string(text, OUTPUT_WORD_TO_IDX)
+        sample["encoded_output"] = encode_string(text, OUTPUT_WORD_TO_IDX, add_sos=True, add_eos=True)
 
         return sample
 
@@ -240,7 +240,7 @@ class HebrewWords(Dataset):
         text = self.input_data[idx]
         sample = {
                 "text": text,
-                "encoded_text": encode_string(text, INPUT_WORD_TO_IDX)
+                "encoded_text": encode_string(text, INPUT_WORD_TO_IDX, add_sos=False, add_eos=True)
                 }
 
         # data properties from the output
@@ -250,17 +250,24 @@ class HebrewWords(Dataset):
         text = mc_reduce(text)
 
         sample["output"] = text
-        sample["encoded_output"] = encode_string(text, OUTPUT_WORD_TO_IDX)
+        sample["encoded_output"] = encode_string(text, OUTPUT_WORD_TO_IDX, add_sos=True, add_eos=True)
 
         return sample
 
 
-def encode_string(seq: str, d: dict, add_eos=True):
+def encode_string(seq: str, d: dict, add_sos=False, add_eos=True):
     """Convert a string to a Tensor with indices using the given dictionary.
 
+    If add_sos adds an SOS_token at the start of the sentence (default=False)
     If add_eos (default) adds an EOS_token at the end of the sentence.
     """
-    idxs = [d[w] for w in seq]
+    idxs = []
+    if add_sos:
+        idxs.append(SOS_token)
+
+    for w in seq:
+        idxs.append(d[w])
+
     if add_eos:
         idxs.append(EOS_token)
     return torch.tensor(idxs, dtype=torch.long, device=device)
