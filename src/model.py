@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from config import device
+from .config import device
 
 
 class HebrewEncoder(nn.Module):
@@ -17,7 +17,7 @@ class HebrewEncoder(nn.Module):
         self.to(device)
 
     def forward(self, input, hidden):
-        embedded = self.input_embeddings(input).view(1, 1, -1)
+        embedded = self.input_embeddings(input).view(-1, 1, self.hidden_dim)
         output = embedded
         output, hidden = self.gru(output, hidden)
         return output, hidden
@@ -35,14 +35,15 @@ class HebrewDecoder(nn.Module):
         self.output_embeddings = nn.Embedding(output_dim, hidden_dim)
         self.gru = nn.GRU(hidden_dim, hidden_dim, num_layers=2)
         self.out = nn.Linear(hidden_dim, output_dim)
-        self.softmax = nn.LogSoftmax(dim=1)
+        self.softmax = nn.LogSoftmax(dim=2)
         self.to(device)
 
     def forward(self, input, hidden):
-        output = self.output_embeddings(input).view(1, 1, -1)
+        output = self.output_embeddings(input).view(-1, 1, self.hidden_dim)
         output = F.relu(output)
         output, hidden = self.gru(output, hidden)
-        output = self.softmax(self.out(output[0]))
+        output = self.out(output)
+        output = self.softmax(output)
         return output, hidden
 
     def initHidden(self):

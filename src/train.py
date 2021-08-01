@@ -4,14 +4,14 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import random_split, DataLoader
+from torch.utils.tensorboard import SummaryWriter
 from torchinfo import summary
 import time
-from config import device, check_abort, abort_handler
-from data import HebrewWords, MAX_LENGTH, SOS_token
-from data import INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX
-from model import HebrewEncoder, HebrewDecoder, save_encoder_decoder
-from evaluate import evaluate, score
-from torch.utils.tensorboard import SummaryWriter
+from .config import device, check_abort, abort_handler
+from .data import HebrewWords, MAX_LENGTH, SOS_token
+from .data import INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX
+from .model import HebrewEncoder, HebrewDecoder, save_encoder_decoder
+from .evaluate import evaluate, score
 
 
 # https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html
@@ -47,25 +47,19 @@ def train(training_data=None, evaluation_data=None,
             input_seq = verse["encoded_text"]
             output_seq = verse["encoded_output"]
 
-            input_length = input_seq.size(0)
-            output_length = output_seq.size(0)
-
             # go over the input sequence
-            encoder_outputs = torch.zeros(MAX_LENGTH, encoder.hidden_dim, device=device)
             encoder_hidden = encoder.initHidden()
 
-            for ei in range(input_length):
-                encoder_output, encoder_hidden = encoder(input_seq[ei], encoder_hidden)
-                encoder_outputs[ei] = encoder_output[0, 0]
+            encoder_output, encoder_hidden = encoder(input_seq, encoder_hidden)
 
             # take over with the decoder and let it run over the output sequence
             decoder_hidden = encoder_hidden
-            decoder_input = torch.tensor([[SOS_token]], device=device)
 
-            for di in range(output_length):
-                decoder_output, decoder_hidden = decoder(decoder_input, decoder_hidden)
-                loss += loss_function(decoder_output, output_seq[di].view(-1))
-                decoder_input = output_seq[di]  # Use oracle predictions
+            decoder_output, decoder_hidden = decoder(output_seq[:-1], decoder_hidden)  # ignore output for last token
+            loss += loss_function(
+                    decoder_output.view(-1, decoder.output_dim),
+                    output_seq[1:].view(-1)  # ignore SOS token
+                    )
 
             loss.backward()
 
@@ -74,6 +68,7 @@ def train(training_data=None, evaluation_data=None,
 
             # every N steps, print some diagnostics
             if counter % 500 == 0:
+                output_length = output_seq.size(0)
                 oldtimer = timer
                 timer = time.time()
                 output = evaluate(encoder, decoder, verse['text'])

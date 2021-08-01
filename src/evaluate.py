@@ -4,9 +4,9 @@ evaluate  run a trained encoder and decoder on a sentence using greedy decoding
 score     evaluate a trained encoder/decoder on a dataset
 """
 import torch
-from config import device, check_abort
-from data import MAX_LENGTH, encode_string, decode_string
-from data import INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX, SOS_token, EOS_token
+from .config import device, check_abort
+from .data import MAX_LENGTH, encode_string, decode_string
+from .data import INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX, SOS_token, EOS_token
 
 
 def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
