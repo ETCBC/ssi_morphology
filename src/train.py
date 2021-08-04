@@ -160,7 +160,6 @@ if __name__ == '__main__':
 
     # log settings
     log_dir = f'runs/{hidden_dim}hidden_{torch_seed}seed_{learning_rate}lr'
-    log_dir = 'runs/lll2'
 
     # optimization strategy
     encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
