@@ -1,6 +1,6 @@
 """Functions and constants related to Datasets.
 
-MAX_LENGTH          maximum length in tokens of an input sequence.
+MAX_LENGTH          maximum length in tokens of a sequence.
 SOS_token           start of sentence token
 EOS_token           end of sentence token
 INPUT_WORD_TO_IDX   mapping from an input token to an index
@@ -9,11 +9,14 @@ OUTPUT_WORD_TO_IDX  mapping from an output token to an index
 mc_reduce           reduce an output sequence to a more compact form
 mc_expand           inverse of the above
 
+collate_fn          Create a batch from a list of input records
+
 encode_string       Convert a string to a Torch Tensor, using a mapping
 decode_string       Convert a Torch Tensor to a string, using a mapping
 
 Dataset wrappers:
-    HebrewVerses    a pytorch Dataset around the hebrew bibble, returns verses.
+    HebrewVerses    a pytorch Dataset around the hebrew bible, returns verses.
+    HebrewWords     a pytroch Dataset arount the hebrew bible, returns words.
 
 """
 import collections
@@ -259,13 +262,16 @@ class HebrewWords(Dataset):
 def collate_fn(batch):
     """Collate (combine) several records into a single tensor.
 
+    The decoder_input and decoder_target are truncated and aligned
+    such that no needless work is done.
+
     Returns:
         encoder_input: torch.Tensor[Ti, B]
-        encoder_lengths: torch.Tensor[B]
+        encoder_lengths: [B]
 
         decoder_input: torch.Tensor[To, B]
         decoder_target: torch.Tensor[To, B]
-        decoder_lengths: torch.Tensor[B]
+        decoder_lengths: [B]
     where:
         B is batch size
         Ti is length of longest input sequence
