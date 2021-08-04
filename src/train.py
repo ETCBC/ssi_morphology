@@ -12,7 +12,7 @@ from .config import check_abort, abort_handler
 from .data import HebrewWords, collate_fn
 from .data import INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX, decode_string
 from .model import HebrewEncoder, HebrewDecoder, save_encoder_decoder
-from .evaluate import score, score_batch
+from .evaluate import score
 
 
 # https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html
@@ -80,6 +80,7 @@ def train(training_data=None, evaluation_data=None,
                 gold = gold[1:decoder_lengths[0]]  # trim padding and SOS
                 gold = decode_string(gold, OUTPUT_WORD_TO_IDX)
 
+                # greedy decode
                 system, system_lengths = pad_packed_sequence(decoder_output)  # (To, B, H)
                 system = torch.argmax(system, dim=2)  # (To, B)
                 system = system[:, 0]  # take first sentence
@@ -101,7 +102,7 @@ def train(training_data=None, evaluation_data=None,
 
         # per epoch evaluation
         oldtimer = time.time()
-        results = score_batch(encoder, decoder, evaluation_data)
+        results = score(encoder, decoder, evaluation_data)
         timer = time.time()
 
         writer.add_scalar('Eval/accuracy', results['accuracy'], global_step=counter)
@@ -115,6 +116,7 @@ def train(training_data=None, evaluation_data=None,
 
     # write summary to tensorboard
     writer.add_hparams({
+        "num_layers": encoder.num_layers,
         "hidden_dim": encoder.hidden_dim,
         "torch_seed": torch_seed,
         "learning_rate": learning_rate,
@@ -135,6 +137,7 @@ if __name__ == '__main__':
     batch_size = 20
     hidden_dim = 128
     torch_seed = 42
+    num_layers = 3
     learning_rate = 1e-3
 
     # load the dataset, and split 70/30 in test/eval
@@ -152,14 +155,14 @@ if __name__ == '__main__':
     print(f'Evaluation size: {len(evaluation_data)}')
 
     # create the network
-    encoder = HebrewEncoder(input_dim=len(INPUT_WORD_TO_IDX), hidden_dim=hidden_dim)
-    decoder = HebrewDecoder(hidden_dim=hidden_dim, output_dim=len(OUTPUT_WORD_TO_IDX))
+    encoder = HebrewEncoder(input_dim=len(INPUT_WORD_TO_IDX), hidden_dim=hidden_dim, num_layers=num_layers)
+    decoder = HebrewDecoder(hidden_dim=hidden_dim, output_dim=len(OUTPUT_WORD_TO_IDX), num_layers=num_layers)
 
     # function to optimize
     loss_function = nn.NLLLoss()
 
     # log settings
-    log_dir = f'runs/{hidden_dim}hidden_{torch_seed}seed_{learning_rate}lr'
+    log_dir = f'runs/{num_layers}layers_{hidden_dim}hidden_{torch_seed}seed_{learning_rate}lr'
 
     # optimization strategy
     encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
