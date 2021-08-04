@@ -2,52 +2,81 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.utils.rnn import pack_padded_sequence, PackedSequence
 
 from .config import device
 
 
+def squash_packed(x, fn, dim=None):
+    if dim:
+        return PackedSequence(fn(x.data.view(-1, dim)), x.batch_sizes, x.sorted_indices, x.unsorted_indices)
+    else:
+        return PackedSequence(fn(x.data), x.batch_sizes, x.sorted_indices, x.unsorted_indices)
+
+
 class HebrewEncoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim):
+    def __init__(self, input_dim, hidden_dim, num_layers=2):
         super(HebrewEncoder, self).__init__()
         self.hidden_dim = hidden_dim
         self.input_dim = input_dim
+        self.num_layers = num_layers
 
         self.input_embeddings = nn.Embedding(input_dim, hidden_dim)
-        self.gru = nn.GRU(hidden_dim, hidden_dim, num_layers=2)
+        self.gru = nn.GRU(hidden_dim, hidden_dim, self.num_layers)
         self.to(device)
 
-    def forward(self, input, hidden):
-        embedded = self.input_embeddings(input).view(-1, 1, self.hidden_dim)
-        output = embedded
+    def forward(self, input, hidden=None, lengths=None):
+        """
+        input: tensor[Ti, B]
+        lengths: tensor[B]
+        hidden: tensor[num_layers, batch_size, hidden_dim]
+        """
+        embedded = self.input_embeddings(input)
+        # embedded: tensor[Ti, B, hidden_dim]
+        output = pack_padded_sequence(embedded, lengths, enforce_sorted=False)
+        # output: PackedSequence
         output, hidden = self.gru(output, hidden)
         return output, hidden
 
-    def initHidden(self):
-        return torch.zeros(2, 1, self.hidden_dim, device=device)
+    def initHidden(self, batch_size=1):
+        return torch.zeros(self.num_layers, batch_size, self.hidden_dim, device=device)
 
 
 class HebrewDecoder(nn.Module):
-    def __init__(self, hidden_dim, output_dim):
+    def __init__(self, hidden_dim, output_dim, num_layers=2):
         super(HebrewDecoder, self).__init__()
         self.hidden_dim = hidden_dim
         self.output_dim = output_dim
+        self.num_layers = num_layers
 
         self.output_embeddings = nn.Embedding(output_dim, hidden_dim)
-        self.gru = nn.GRU(hidden_dim, hidden_dim, num_layers=2)
+        self.gru = nn.GRU(hidden_dim, hidden_dim, num_layers=self.num_layers)
         self.out = nn.Linear(hidden_dim, output_dim)
-        self.softmax = nn.LogSoftmax(dim=2)
+        self.softmax = nn.LogSoftmax(dim=1)
         self.to(device)
 
-    def forward(self, input, hidden):
-        output = self.output_embeddings(input).view(-1, 1, self.hidden_dim)
-        output = F.relu(output)
+    def forward(self, input, hidden=None, lengths=None):
+        """
+        input: tensor[To, B]
+        target: tensor[To, B]
+        lengths: tensor[B]
+        hidden: tensor[num_layers, batch_size, hidden_dim]
+        """
+        embedded = self.output_embeddings(input)
+        # embedded: tensor[Ti, B, hidden_dim]
+
+        output = pack_padded_sequence(embedded, lengths, enforce_sorted=False)
+        # output: PackedSequence
+
+        output = squash_packed(output, F.relu)
         output, hidden = self.gru(output, hidden)
-        output = self.out(output)
-        output = self.softmax(output)
+        output = squash_packed(output, self.out)
+        output = squash_packed(output, self.softmax, dim=self.output_dim)
+
         return output, hidden
 
-    def initHidden(self):
-        return torch.zeros(2, 1, self.hidden_dim, device=device)
+    def initHidden(self, batch_size=1):
+        return torch.zeros(self.num_layers, batch_size, self.hidden_dim, device=device)
 
 
 def save_encoder_decoder(encoder, decoder, path=None, filename="model.pt"):
