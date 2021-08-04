@@ -23,5 +23,9 @@ def abort_handler(signal_received, frame):
 
 
 def check_abort():
+    """Check if abort is requested.
+
+    NOTE: This needs to be a function, just importing abort and checking it will not work
+    """
     global abort
     return abort

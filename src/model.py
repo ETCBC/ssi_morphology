@@ -8,6 +8,20 @@ from .config import device
 
 
 def squash_packed(x, fn, dim=None):
+    """Run a function on a PackedSequence.
+
+    This is a shortcut to first unpack the sequence, run the function,
+    and repack.
+
+    Arguments
+
+    x           data to call the function on
+    fn          Function to call
+    dim (None)  If given, assume the function operates on a vector,
+                and do fn(x.view(-1, dim))
+                Otherwise, do fn(x).
+
+    """
     if dim:
         return PackedSequence(fn(x.data.view(-1, dim)), x.batch_sizes, x.sorted_indices, x.unsorted_indices)
     else:
@@ -15,21 +29,30 @@ def squash_packed(x, fn, dim=None):
 
 
 class HebrewEncoder(nn.Module):
-    def __init__(self, input_dim, hidden_dim, num_layers=2):
+    def __init__(self, input_dim, hidden_dim, num_layers=2, bidir=False):
+        """Initialize the encoder.
+
+        input_dim    Size of the input
+        hidden_dim   Size of the hidden state
+        num_layers   (default=2) Number of layers in the GRU cell
+        bidir        (default=False) Apply bi-directional GRU
+        """
         super(HebrewEncoder, self).__init__()
         self.hidden_dim = hidden_dim
         self.input_dim = input_dim
         self.num_layers = num_layers
+        self.bidir = bidir
+        self.D = 2 if bidir else 1
 
         self.input_embeddings = nn.Embedding(input_dim, hidden_dim)
-        self.gru = nn.GRU(hidden_dim, hidden_dim, self.num_layers)
+        self.gru = nn.GRU(hidden_dim, hidden_dim, self.num_layers, bidirectional=self.bidir)
         self.to(device)
 
     def forward(self, input, hidden=None, lengths=None):
         """
         input: tensor[Ti, B]
         lengths: tensor[B]
-        hidden: tensor[num_layers, batch_size, hidden_dim]
+        hidden: tensor[num_layers * dirs, batch_size, hidden_dim]
         """
         embedded = self.input_embeddings(input)
         # embedded: tensor[Ti, B, hidden_dim]
@@ -39,11 +62,17 @@ class HebrewEncoder(nn.Module):
         return output, hidden
 
     def initHidden(self, batch_size=1):
-        return torch.zeros(self.num_layers, batch_size, self.hidden_dim, device=device)
+        return torch.zeros(self.num_layers * self.D, batch_size, self.hidden_dim, device=device)
 
 
 class HebrewDecoder(nn.Module):
     def __init__(self, hidden_dim, output_dim, num_layers=2):
+        """Initialize the denoder.
+
+        input_dim    Size of the input
+        hidden_dim   Size of the hidden state
+        num_layers   (default=2) Number of layers in the GRU cell
+        """
         super(HebrewDecoder, self).__init__()
         self.hidden_dim = hidden_dim
         self.output_dim = output_dim
