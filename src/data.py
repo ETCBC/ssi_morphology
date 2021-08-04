@@ -20,9 +20,10 @@ import collections
 import re
 import torch
 from torch.utils.data import Dataset
+from torch.nn.utils.rnn import pad_sequence
 from .config import device
 
-MAX_LENGTH = 500
+MAX_LENGTH = 25
 
 MC_PREFIXES = ['!', ']', '@']
 
@@ -255,6 +256,42 @@ class HebrewWords(Dataset):
         return sample
 
 
+def collate_fn(batch):
+    """Collate (combine) several records into a single tensor.
+
+    Returns:
+        encoder_input: torch.Tensor[Ti, B]
+        encoder_lengths: torch.Tensor[B]
+
+        decoder_input: torch.Tensor[To, B]
+        decoder_target: torch.Tensor[To, B]
+        decoder_lengths: torch.Tensor[B]
+    where:
+        B is batch size
+        Ti is length of longest input sequence
+        To is length of longest output sequence
+    """
+    # Encoder input
+    encoder_input = [b['encoded_text'] for b in batch]
+    encoder_input = pad_sequence(encoder_input)
+    encoder_lengths = [b['encoded_text'].size()[0] for b in batch]
+
+    # Decoder input
+    # the input for the decoder, truncated so that we do not predict
+    # anything for the final EOS_token
+    decoder_input = [b['encoded_output'][:-1] for b in batch]
+    decoder_input = pad_sequence(decoder_input)
+
+    # Decoder target
+    # the output for the decoder, shifted such that the first output
+    # corresponds to input of the SOS_token
+    decoder_target = [b['encoded_output'][1:] for b in batch]
+    decoder_target = pad_sequence(decoder_target)
+    decoder_lengths = [b['encoded_output'].size()[0] - 1 for b in batch]
+
+    return encoder_input, encoder_lengths, decoder_input, decoder_target, decoder_lengths
+
+
 def encode_string(seq: str, d: dict, add_sos=False, add_eos=True):
     """Convert a string to a Tensor with indices using the given dictionary.
 
@@ -273,10 +310,11 @@ def encode_string(seq: str, d: dict, add_sos=False, add_eos=True):
     return torch.tensor(idxs, dtype=torch.long, device=device)
 
 
-def decode_string(t, d:dict, strip_eos=True):
+def decode_string(t, d:dict, strip_sos=True, strip_eos=True):
     """Convert a Tensor with indices to a string using the given dictionary.
 
     If strip_eos (default), removes all EOS_tokens from the string.
+    If strip_sos (default), removes all SOS_tokens from the string.
     """
     inv_d = {v: k for k, v in d.items()}
     seq = ""
@@ -284,11 +322,13 @@ def decode_string(t, d:dict, strip_eos=True):
         if isinstance(c, torch.Tensor):
             c = c.item()
 
-        if strip_eos:
-            if c != EOS_token:
-                seq = seq + inv_d[c]
-        else:
-            seq = seq + inv_d[c]
+        if strip_eos and c == EOS_token:
+            continue
+
+        if strip_sos and c == SOS_token:
+            continue
+
+        seq = seq + inv_d[c]
     return seq
 
 
