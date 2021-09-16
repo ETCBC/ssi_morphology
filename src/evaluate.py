@@ -9,6 +9,7 @@ from .config import device, check_abort
 from .data import decode_string
 from .data import OUTPUT_WORD_TO_IDX, EOS_token
 from .data import MAX_LENGTH
+from .model import reshape_hidden
 
 
 def score(encoder, decoder, dataset, max_length=MAX_LENGTH):
@@ -44,6 +45,7 @@ def score(encoder, decoder, dataset, max_length=MAX_LENGTH):
         # decoder
         # hidden state is initialized from the encoder
         decoder_hidden = encoder_hidden
+        decoder_hidden = reshape_hidden(encoder_hidden, encoder.num_layers, encoder.D, -1, encoder.hidden_dim)
 
         # decoder_input
         # as we do greedy decoding, we only need the first SOS_tokens
@@ -69,21 +71,18 @@ def score(encoder, decoder, dataset, max_length=MAX_LENGTH):
             next_beams = []
             decoder_input = []
             next_hidden = []
-            for cb in range(len(current_beams)):
-                # the index of this beam in original batch
-                s = current_beams[cb]
-
+            for batch_idx, beam_idx in enumerate(current_beams):
                 # the predicted next token for this beam
-                t = topi[cb].item()
+                pred_token = topi[batch_idx].item()
 
                 # store this output at the corresponding beam
-                system[s].append(t)
+                system[beam_idx].append(pred_token)
 
                 # do we need to continue with this beam?
-                if t != EOS_token:
-                    next_beams.append(s)
-                    decoder_input.append(t)
-                    next_hidden.append(decoder_hidden[:, cb, :].unsqueeze(dim=1))
+                if pred_token != EOS_token:
+                    next_beams.append(beam_idx)
+                    decoder_input.append(pred_token)
+                    next_hidden.append(decoder_hidden[:, batch_idx, :].unsqueeze(dim=1))
 
             # are there any beams to continue?
             if len(next_beams) == 0:
@@ -97,15 +96,18 @@ def score(encoder, decoder, dataset, max_length=MAX_LENGTH):
             current_beams = next_beams
 
         # Finished decoding, loop over the beams to compare strings
-        for si in range(len(system)):
-            output = decode_string(system[si], OUTPUT_WORD_TO_IDX, strip_sos=True, strip_eos=True)
+        for beam_idx, pred_tokens in enumerate(system):
+            output = decode_string(pred_tokens, OUTPUT_WORD_TO_IDX, strip_sos=True, strip_eos=True)
 
             # fully correct transcription
-            gold = decode_string(decoder_target[0:target_lengths[si], si], OUTPUT_WORD_TO_IDX, strip_sos=True, strip_eos=True)
+            gold = decode_string(
+                decoder_target[0:target_lengths[beam_idx], beam_idx],
+                OUTPUT_WORD_TO_IDX, strip_sos=True, strip_eos=True
+                )
 
             total += 1  # total number of transcriptions
             if output == gold:
-                correct += 1
+                correct += 1  # total number of correct transcriptions
 
     if total > 0:
         accuracy = (1.0 * correct) / (1.0 * total)

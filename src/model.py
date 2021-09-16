@@ -7,6 +7,24 @@ from torch.nn.utils.rnn import pack_padded_sequence, PackedSequence
 from .config import device
 
 
+def reshape_hidden(hidden, num_layers, num_directions, batch, hidden_dim):
+    """Reshape the hidden state of an encoder for use in a decoder.
+
+    Arguments
+    hidden   The hidden state of the encoder [num_layers * dirs, B, hidden_dim]
+
+    Returns
+    hidden   The hidden state of the decoder [num_layers, B, hidden_dim * dirs]
+    """
+    if num_directions == 1:
+        return hidden
+
+    dir_a = hidden.view(num_layers, 2, batch, hidden_dim)[:, 0, :, :]  # [num_layers, batch, hidden_dim]
+    dir_b = hidden.view(num_layers, 2, batch, hidden_dim)[:, 1, :, :]  # [num_layers, batch, hidden_dim]
+
+    return torch.cat((dir_a, dir_b), dim=2)
+
+
 def squash_packed(x, fn, dim=None):
     """Run a function on a PackedSequence.
 
@@ -24,8 +42,8 @@ def squash_packed(x, fn, dim=None):
     """
     if dim:
         return PackedSequence(fn(x.data.view(-1, dim)), x.batch_sizes, x.sorted_indices, x.unsorted_indices)
-    else:
-        return PackedSequence(fn(x.data), x.batch_sizes, x.sorted_indices, x.unsorted_indices)
+
+    return PackedSequence(fn(x.data), x.batch_sizes, x.sorted_indices, x.unsorted_indices)
 
 
 class HebrewEncoder(nn.Module):
