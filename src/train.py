@@ -1,4 +1,3 @@
-import sys
 from signal import signal, SIGINT, SIG_DFL
 import torch
 import torch.nn as nn
@@ -11,7 +10,7 @@ import time
 from .config import check_abort, abort_handler
 from .data import HebrewWords, collate_fn
 from .data import INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX, decode_string
-from .model import HebrewEncoder, HebrewDecoder, save_encoder_decoder
+from .model import HebrewEncoder, HebrewDecoder, save_encoder_decoder, reshape_hidden
 from .evaluate import score
 
 
@@ -50,8 +49,7 @@ def train(training_data=None, evaluation_data=None,
             encoder_output, encoder_hidden = encoder(encoder_input, lengths=encoder_lengths)
 
             # take over with the decoder and let it run over the output sequence
-            decoder_hidden = encoder_hidden
-
+            decoder_hidden = reshape_hidden(encoder_hidden, encoder.num_layers, encoder.D, -1, encoder.hidden_dim)
             decoder_output, decoder_hidden = decoder(decoder_input, hidden=decoder_hidden, lengths=decoder_lengths)
 
             # pack the target tokens in the same way we'll get the output
@@ -88,7 +86,7 @@ def train(training_data=None, evaluation_data=None,
                 system = decode_string(system, OUTPUT_WORD_TO_IDX)
 
                 # TODO: is NLLLoss averaged or summed?
-                print(f'step= {counter} epoch= f{epoch} t={timer - timer_start} dt={timer - oldtimer} batchloss={loss.item()}')
+                print(f'step={counter} epoch={epoch} t={timer - timer_start} dt={timer - oldtimer} batchloss={loss.item()}')
 
                 print(f'\tverse: {sentence}\tgold: {gold}\tsystem: {system}')
                 writer.add_text('sample', sentence + "<=>" + system, global_step=counter)
@@ -137,7 +135,7 @@ if __name__ == '__main__':
     batch_size = 20
     hidden_dim = 128
     torch_seed = 42
-    num_layers = 3
+    num_layers = 2
     learning_rate = 1e-3
 
     # load the dataset, and split 70/30 in test/eval
@@ -155,14 +153,14 @@ if __name__ == '__main__':
     print(f'Evaluation size: {len(evaluation_data)}')
 
     # create the network
-    encoder = HebrewEncoder(input_dim=len(INPUT_WORD_TO_IDX), hidden_dim=hidden_dim, num_layers=num_layers)
-    decoder = HebrewDecoder(hidden_dim=hidden_dim, output_dim=len(OUTPUT_WORD_TO_IDX), num_layers=num_layers)
+    encoder = HebrewEncoder(input_dim=len(INPUT_WORD_TO_IDX), hidden_dim=hidden_dim, num_layers=num_layers, bidir=False)
+    decoder = HebrewDecoder(hidden_dim=1*hidden_dim, output_dim=len(OUTPUT_WORD_TO_IDX), num_layers=num_layers)
 
     # function to optimize
     loss_function = nn.NLLLoss()
 
     # log settings
-    log_dir = f'runs/{num_layers}layers_{hidden_dim}hidden_{torch_seed}seed_{learning_rate}lr'
+    log_dir = f'runs/{num_layers}layers_{hidden_dim}hidden_{torch_seed}seed_{learning_rate}lr_bidir'
 
     # optimization strategy
     encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
