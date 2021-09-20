@@ -24,7 +24,7 @@ import re
 import torch
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
-from .config import device
+from config import device
 
 MAX_LENGTH = 25
 
@@ -222,7 +222,19 @@ class HebrewWords(Dataset):
             bo, ch, ve, output = tuple(output_verses[i].strip().split('\t'))
 
             input_words = text.split()
-            output_words = output.split()
+            output_words = re.split('_| ', output)
+            
+            # Remove ketiv-qere cases
+            no_ketivs_zipped = [item for item in zip(input_words, output_words) if '*' not in input_words]
+            unzipped_no_ketivs_list = list(zip(*no_ketivs_zipped))
+            
+            if len(unzipped_no_ketivs_list) == 0:
+                continue
+            
+            input_tuple, output_tuple = unzipped_no_ketivs_list
+            input_words = list(input_tuple)
+            output_words = list(output_tuple)
+            
             if (len(input_words) == len(output_words)):
                 self.input_data += input_words
                 self.output_data += output_words
@@ -363,7 +375,7 @@ def mc_expand(s: str) -> str:
     return s
 
 
-def read_data_from_file(filename: str) -> dict[str, list]:
+def read_data_from_file(filename: str):
     """Read data from a text file and return a Dict.
 
     The file is one verse per line, tab separated with some metadata:
