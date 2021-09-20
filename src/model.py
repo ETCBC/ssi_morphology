@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, PackedSequence
 
-from .config import device
+from config import device
 
 
 def squash_packed(x, fn, dim=None):

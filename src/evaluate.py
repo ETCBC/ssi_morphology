@@ -5,10 +5,10 @@ score     evaluate a trained encoder/decoder on a dataset
 import torch
 from torch.nn.utils.rnn import pad_packed_sequence
 
-from .config import device, check_abort
-from .data import decode_string
-from .data import OUTPUT_WORD_TO_IDX, EOS_token
-from .data import MAX_LENGTH
+from config import device, check_abort
+from data import decode_string
+from data import OUTPUT_WORD_TO_IDX, EOS_token
+from data import MAX_LENGTH
 
 
 def score(encoder, decoder, dataset, max_length=MAX_LENGTH):
