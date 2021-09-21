@@ -187,12 +187,13 @@ class HebrewVerses(Dataset):
 class HebrewWords(Dataset):
     """A Pytorch wrapper around the hebrew bible text. Processed per word."""
 
-    def __init__(self, input_filename: str, output_filename: str,
-                 transform=None):
+    def __init__(self, input_filename: str, output_filename: str, 
+                 sequence_length: int, transform=None):
         """
         Args:
             input_filename (str)
             output_filename (str)
+            sequence_length (int): number of words in single training sample
             transform (callable, optional): Optional transform to be applied
                             on a sample.
 
@@ -214,9 +215,15 @@ class HebrewWords(Dataset):
             output_verses = f.readlines()
 
         assert(len(input_verses) == len(output_verses))
+        
+
 
         self.input_data = []
         self.output_data = []
+
+        all_input_words = []
+        all_output_words = []
+
         for i in range(len(input_verses)):
             bo, ch, ve, text = tuple(input_verses[i].strip().split('\t'))
             bo, ch, ve, output = tuple(output_verses[i].strip().split('\t'))
@@ -224,24 +231,22 @@ class HebrewWords(Dataset):
             input_words = text.split()
             output_words = re.split('_| ', output)
             
-            # Remove ketiv-qere cases
-            no_ketivs_zipped = [item for item in zip(input_words, output_words) if '*' not in input_words]
-            unzipped_no_ketivs_list = list(zip(*no_ketivs_zipped))
-            
-            if len(unzipped_no_ketivs_list) == 0:
-                continue
-            
-            input_tuple, output_tuple = unzipped_no_ketivs_list
-            input_words = list(input_tuple)
-            output_words = list(output_tuple)
-            
             if (len(input_words) == len(output_words)):
-                self.input_data += input_words
-                self.output_data += output_words
+                all_input_words += input_words
+                all_output_words += output_words
             else:
                 print(f"Encoding issue with {bo} {ch} {ve} : mismatch in number of words")
                 print(input_words)
                 print(output_words)
+
+        for heb_word in range(len(all_input_words)+1):
+            input_seq = ' '.join([all_input_words[ind % len(all_input_words)] for ind in range(heb_word, heb_word + sequence_length)])
+            output_seq = ' '.join([all_output_words[ind % len(all_output_words)] for ind in range(heb_word, heb_word + sequence_length)])
+            
+            # Add if not cases of ketiv-qere
+            if '*' not in input_seq:
+                self.input_data.append(input_seq)
+                self.output_data.append(output_seq)
 
         self.transform = transform
 
@@ -269,6 +274,16 @@ class HebrewWords(Dataset):
         sample["encoded_output"] = encode_string(text, OUTPUT_WORD_TO_IDX, add_sos=True, add_eos=True)
 
         return sample
+
+    def make_longer_sequences(self, data_list, sequence_length):
+
+        data_list = []
+        for w in range(len(data_list)+1):
+            seq = ' '.join([data_list[ind % len(data_list)] for ind in range(w, w + sequence_length)])
+            all_sequences.append(seq)
+         
+
+        
 
 
 def collate_fn(batch):
