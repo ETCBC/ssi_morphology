@@ -141,7 +141,7 @@ if __name__ == '__main__':
     learning_rate = 1e-3
 
     # load the dataset, and split 70/30 in test/eval
-    bible = HebrewWords('../data/t-in_voc', '../data/t-out')
+    bible = HebrewWords('../data/t-in_voc', '../data/t-out', 2)
     len_train = int(0.7 * len(bible))
     len_eval = len(bible) - len_train
     # alwyas use the same seed for train/test split
