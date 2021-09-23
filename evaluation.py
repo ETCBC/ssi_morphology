@@ -1,16 +1,25 @@
-# This module provides a method for calculating the distance
-# between two morphological encodings. It exports two functions:
-# mc_distance(code1, code2) and mc_load_morphemes(language).
+# This module provides a method for calculating the incorrectness
+# of a morphological encoding or the distance between two encodings.
+# It exports three functions: mc_badness(), mc_distance(code1, code2)
+# and mc_load_morphemes(language).
 
 # mc_load_morphemes() needs to be called before the first call to
-# mc_distance() in order to initialise the appropriate language
-# (currently Hebrew or Syriac).
+# mc_badness() and mc_distance() in order to initialise the appropriate
+# language (currently Hebrew or Syriac).
+
+# mc_badness() takes one or two arguments: the surface form and the
+# encoding. If only the encoding is given, error level 1 (difference
+# of the surface form with the true surface form) is not evaluated.
+# It returns zero for a correct encoding or a positive integer
+# indicating how bad the encoding is.
 
 # mc_distance(code1, code2) takes as arguments two strings, which
 # are supposed to represent morphological encodings, and returns an
-# integer in the range 0..262143 (which is 8**6-1) indicating how far
-# apart both encodings are. If one of the two strings is known to be
-# a correct encoding, the distance expresses how `bad' the other is.
+# integer indicating how far apart both encodings are. If one of
+# the two strings is known to be a correct encoding, the distance
+# expresses how `bad' the other is.
+
+# Both functions return an integer < 262144 (which is 8**6).
 
 # mc_load_morphemes(language) takes one string as argument, the name
 # of the language of which the paradigmatic forms of the morphemes
@@ -32,6 +41,7 @@ Base = 8
 # v[5] = number of morphemes that differ from the true form
 Dimensions = 6
 
+Consonants = '>BGDHWZXVJKLMNS<PYQRFCT'
 
 # Global variables that hold the morphemes of the language
 
@@ -107,7 +117,7 @@ class McLexer(Lexer):
    PFM = '!'
    PFX = '@'
    VBS = '\\]'
-   LETTER = '[>BGDHWZXVJKLMNS<PYQRFCT]'
+   LETTER = f'[{Consonants}]'
    HOMOGRAPHY = '=+'
    VBE = '\\['
    NME = '/'
@@ -318,7 +328,7 @@ from numpy import zeros
 def evaluate(wl, e):
    '''Evaluate the three dimensions which can be calculated
       individually for word list (wl) with (e) syntax errors.'''
-   v = zeros(Dimensions)
+   v = zeros(Dimensions, dtype=int)
    v[0] = e
    v[2] = ungrammatical_combinations(wl)
    v[3] = unparadigmatic_morphemes(wl)
@@ -397,3 +407,25 @@ def mc_distance(s1, s2):
       v = compare(w1, w2, v1, v2)
       #print(v1, v2, v)
       return badness(v)
+
+
+from re import sub
+non_consonants = f'[^{Consonants}]'
+
+def consonants(s):
+   '''Strip all non-consonants from a surface form.'''
+   return sub(non_consonants, '', s)
+
+
+# mc_badness() takes one or two arguments: the surface form and the
+# encoding. If only the encoding is given, error level 1 (difference
+# of the surface form with the true surface form) is not evaluated.
+
+def mc_badness(*s):
+   '''Return a nonnegative number that expresses how bad the encoding
+      of the surface form is.'''
+   w, e = mc_parse(s[-1])
+   v = evaluate(w, e)
+   if len(s) > 1:
+      v[1] = distance(consonants(s[0]), wlsurface(w))
+   return badness(v)
