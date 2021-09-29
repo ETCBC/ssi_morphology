@@ -141,7 +141,7 @@ def save_encoder_decoder(encoder, decoder, path=None, filename="model.pt"):
     torch.save(state, os.path.join(path, filename))
 
 
-def load_encoder_decoder(encoder, decoder, path=None, filename="model.pt"):
+def load_encoder_decoder(path=None, filename="model.pt"):
     if not path:
         path = "."
 
