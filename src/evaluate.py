@@ -2,12 +2,13 @@
 
 score     evaluate a trained encoder/decoder on a dataset
 """
+import heapq
 import torch
 from torch.nn.utils.rnn import pad_packed_sequence
 
 from .config import device, check_abort
 from .data import decode_string
-from .data import OUTPUT_WORD_TO_IDX, EOS_token
+from .data import OUTPUT_WORD_TO_IDX, INPUT_WORD_TO_IDX, SOS_token, EOS_token
 from .data import MAX_LENGTH
 from .model import reshape_hidden
 
@@ -19,13 +20,15 @@ def score(encoder, decoder, dataset, max_length=MAX_LENGTH):
     complexity, but very similar code is needed later for beamsearch decoding.
 
     TODO: split running the endocer/decoder and evaluating gold/system to
-    different functions, and use better comparision metrics (fi 'badness' script.)
+    different functions, and use better comparision metrics (fi 'badness'
+    script.)
 
     Arguments:
         encoder
         decoder
         dataset     A generator for evaluation batches
-        max_length  (optional, default=MAX_LENGTH) Safety limit to prevent endless output
+        max_length  (optional, default=MAX_LENGTH) Safety limit to prevent
+                    endless output
 
         output      A dict containing the following elements:
                     total      number of transcriptions
@@ -34,22 +37,26 @@ def score(encoder, decoder, dataset, max_length=MAX_LENGTH):
     """
     total = 0
     correct = 0
-    for encoder_input, encoder_lengths, decoder_input, decoder_target, target_lengths in dataset:
+    for encoder_input, encoder_lengths, \
+            decoder_input, decoder_target, target_lengths in dataset:
         if check_abort():
             break
 
         # encoder
         # go over the full input sequence with an emtpy hidden state
-        encoder_output, encoder_hidden = encoder(encoder_input, lengths=encoder_lengths)
+        _, encoder_hidden = encoder(
+                encoder_input, lengths=encoder_lengths)
 
         # decoder
         # hidden state is initialized from the encoder
-        decoder_hidden = encoder_hidden
-        decoder_hidden = reshape_hidden(encoder_hidden, encoder.num_layers, encoder.D, -1, encoder.hidden_dim)
+        decoder_hidden = reshape_hidden(
+                encoder_hidden, encoder.num_layers,
+                encoder.D, -1, encoder.hidden_dim)
 
         # decoder_input
-        # as we do greedy decoding, we only need the first SOS_tokens
-        # as the second input we continue with the predicted token from the previous step
+        # as we do greedy decoding, we only need the first SOS_tokens as the
+        # second input we continue with the predicted token from the previous
+        # step
         batch_size = decoder_input.size()[1]
         decoder_input = decoder_input[0, :].view(1, batch_size)  # [Ti=1, B]
         decoder_lengths = [1] * batch_size
@@ -60,11 +67,16 @@ def score(encoder, decoder, dataset, max_length=MAX_LENGTH):
 
         for _ in range(max_length):
             # apply a single step with the decoder to all the beams at once
-            decoder_output, decoder_hidden = decoder(decoder_input, hidden=decoder_hidden, lengths=decoder_lengths)
-            decoder_output, _ = pad_packed_sequence(decoder_output)  # [1, B, H], _
+            decoder_output, decoder_hidden = \
+                    decoder(decoder_input,
+                            hidden=decoder_hidden,
+                            lengths=decoder_lengths
+                            )
+            decoder_output, _ = pad_packed_sequence(decoder_output)
+            # [1, B, H], _
 
             # greedy decoding: find the most likely output
-            topv, topi = decoder_output.topk(1,  dim=2)  # [1, B, 1]
+            _, topi = decoder_output.topk(1,  dim=2)  # [1, B, 1]
             topi = topi.view(-1)  # [B]
 
             # store the tokens and prepare next iteration
@@ -82,7 +94,9 @@ def score(encoder, decoder, dataset, max_length=MAX_LENGTH):
                 if pred_token != EOS_token:
                     next_beams.append(beam_idx)
                     decoder_input.append(pred_token)
-                    next_hidden.append(decoder_hidden[:, batch_idx, :].unsqueeze(dim=1))
+                    next_hidden.append(
+                            decoder_hidden[:, batch_idx, :].unsqueeze(dim=1)
+                            )
 
             # are there any beams to continue?
             if len(next_beams) == 0:
@@ -97,7 +111,9 @@ def score(encoder, decoder, dataset, max_length=MAX_LENGTH):
 
         # Finished decoding, loop over the beams to compare strings
         for beam_idx, pred_tokens in enumerate(system):
-            output = decode_string(pred_tokens, OUTPUT_WORD_TO_IDX, strip_sos=True, strip_eos=True)
+            output = decode_string(
+                    pred_tokens, OUTPUT_WORD_TO_IDX,
+                    strip_sos=True, strip_eos=True)
 
             # fully correct transcription
             gold = decode_string(
@@ -108,6 +124,194 @@ def score(encoder, decoder, dataset, max_length=MAX_LENGTH):
             total += 1  # total number of transcriptions
             if output == gold:
                 correct += 1  # total number of correct transcriptions
+
+    if total > 0:
+        accuracy = (1.0 * correct) / (1.0 * total)
+    else:
+        accuracy = 0.0
+
+    return {
+        "total": total,
+        "correct": correct,
+        "accuracy": accuracy
+    }
+
+
+def print_queue(msg, queue):
+    """Print the human readable contents of a queue"""
+    for i, (s, q, h) in enumerate(queue):
+        print(
+                msg, i,
+                'score=', s,
+                decode_string(q, OUTPUT_WORD_TO_IDX, strip_sos=False, strip_eos=False)
+            )
+
+
+def stop_condition(queue, result_queue, requested_results=1):
+    """Stop condition for Best-first Beam Search
+
+    The queue contains tuples of:
+    (score, tokens, hidden_state [num_layers, 1, hidden_dim])
+    """
+    # Stop when there are no more beams to investigate
+    if len(queue) == 0:
+        return True
+
+    # Stop when we have a result
+    if len(result_queue) > requested_results:
+        return True
+
+
+def best_first_beam_search(
+        decoder,
+        decoder_hidden,
+        beam_width=5,
+        max_length=MAX_LENGTH):
+    """
+    Following: Best-First Beam Search (algorithm 2)
+    Clara Meister, Tim Vieira, Ryan Cotterell
+    https://arxiv.org/abs/2007.03909
+
+    NOTES:
+    The score in the paper is monotonous decreasing s(x, y_t) >= s(x, y_t+1)
+    Our network returns logsoftmax, ie (-inf, 0].
+    Adding this up gives a monotonously decreasing series. [#14]
+    An initial score of 0 will work, too [#2].
+
+    The queue in the paper is a max queue, the largest element has highest
+    priortity and is the first element, queue[0], and is popped.
+    Heapq is a min queue, highest priority is to the smallest element, so we
+    must use the negative score as priority [#15]
+    """
+    # a tuple (score, tokens, hidden_state [num_layers, 1, decoder_hidden])
+    queue = []  # 1
+    result_queue = []
+    heapq.heappush(queue, (0.0, [torch.tensor([[SOS_token]]).to(device)], decoder_hidden))  # 2
+    POPS = [0] * (max_length + 1)
+    whilei = 0
+    while not stop_condition(queue, result_queue, beam_width):  # 4
+        whilei = whilei + 1
+        sentence_penalty, system, decoder_hidden = heapq.heappop(queue)  # 5
+        if POPS[len(system)] >= beam_width or \
+                len(system) > max_length:  # 6
+            continue  # 7
+        POPS[len(system)] += 1  # 8
+        if system[-1] == EOS_token:  # 9
+            heapq.heappush(
+                    result_queue,
+                    (sentence_penalty, system, decoder_hidden)
+                    )  # 10
+        else:  # 11
+            # 13
+            # run network
+            decoder_input = system[-1]
+            decoder_lengths = [1]
+
+            decoder_output, decoder_hidden = decoder(
+                    decoder_input,
+                    hidden=decoder_hidden,
+                    lengths=decoder_lengths)
+            decoder_output, _ = pad_packed_sequence(decoder_output)
+            # [1, B, H], _
+
+            # for now, with batch size is 1:
+            decoder_output = decoder_output.view(-1)  # [H]
+            for token, token_score in enumerate(decoder_output):  # 12
+                # Skip heuristices
+                # sh = s + h(x, y + token)  # 14
+
+                # careful with python lists, we need a real duplicate
+                system_plus_token = system.copy()
+                system_plus_token.append(
+                        torch.tensor([[token]]).to(device)
+                        )
+
+                heapq.heappush(queue, (
+                    sentence_penalty - token_score,
+                    system_plus_token,
+                    decoder_hidden
+                ))  # 15
+
+    # 16
+    if len(result_queue) > 0:
+        print_queue('output', result_queue)
+        return heapq.heappop(result_queue)
+
+    return (0., [SOS_token, EOS_token], None)
+
+
+def score_beam_search(encoder, decoder, dataset, max_length=MAX_LENGTH):
+    """Evaluate an encoder/decoder on a Dataset using Best First Beam Search.
+
+    Arguments:
+        encoder
+        decoder
+        dataset     A generator for evaluation batches
+        max_length  (optional, default=MAX_LENGTH) Safety limit to prevent
+                    endless output
+
+        output      A dict containing the following elements:
+                    total      number of transcriptions
+                    correct    number of correct transcriptions
+                    accuracy   percentage of fully correct transcriptions
+    """
+
+    total = 0
+    correct = 0
+    for encoder_input, encoder_lengths, decoder_input, \
+            decoder_target, target_lengths in dataset:
+        if check_abort():
+            break
+
+        batch_size = decoder_input.size()[1]  # B
+
+        # do a normal encoder pass
+        _, encoder_hidden = encoder(encoder_input, lengths=encoder_lengths)
+
+        # decoder_hidden state is initialized from the encoder state
+        decoder_hidden = reshape_hidden(  # [num_layers, B, hidden_dim]
+                encoder_hidden, encoder.num_layers,
+                encoder.D, -1, encoder.hidden_dim)
+
+        system = []
+        with torch.no_grad():
+            for batch_idx in range(batch_size):
+                _, decoder_ouput, _ = best_first_beam_search(
+                        decoder,
+                        decoder_hidden[:, batch_idx:batch_idx+1, :]
+                        )
+                system.append(decoder_ouput)
+
+        # Finished decoding, loop over the beams to compare strings
+        for beam_idx, pred_tokens in enumerate(system):
+            # gold input
+            inpt = decode_string(
+                encoder_input[0:encoder_lengths[beam_idx], beam_idx],
+                INPUT_WORD_TO_IDX, strip_sos=True, strip_eos=True
+                )
+
+            # system output
+            output = decode_string(
+                    pred_tokens, OUTPUT_WORD_TO_IDX,
+                    strip_sos=True, strip_eos=True)
+
+            # gold output
+            gold = decode_string(
+                decoder_target[0:target_lengths[beam_idx], beam_idx],
+                OUTPUT_WORD_TO_IDX, strip_sos=True, strip_eos=True
+                )
+
+            print('\n')
+            print('input=', inpt)
+            print('output=', output)
+            print('gold=  ', gold)
+
+            total += 1  # total number of transcriptions
+            if output == gold:
+                print('ok')
+                correct += 1  # total number of correct transcriptions
+            else:
+                print('ERROR')
 
     if total > 0:
         accuracy = (1.0 * correct) / (1.0 * total)
