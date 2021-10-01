@@ -112,13 +112,23 @@ class HebrewDecoder(nn.Module):
         embedded = self.output_embeddings(input)
         # embedded: tensor[Ti, B, hidden_dim]
 
-        output = pack_padded_sequence(embedded, lengths, enforce_sorted=False)
-        # output: PackedSequence
+        if lengths is not None:
+            output = pack_padded_sequence(
+                    embedded,
+                    lengths,
+                    enforce_sorted=False
+                    )
+            # output: PackedSequence
 
-        output = squash_packed(output, F.relu)
-        output, hidden = self.gru(output, hidden)
-        output = squash_packed(output, self.out)
-        output = squash_packed(output, self.softmax, dim=self.output_dim)
+            output = squash_packed(output, F.relu)
+            output, hidden = self.gru(output, hidden)
+            output = squash_packed(output, self.out)
+            output = squash_packed(output, self.softmax, dim=self.output_dim)
+        else:
+            output = F.relu(embedded)
+            output, hidden = self.gru(output, hidden)
+            output = self.out(output)
+            output = self.softmax(output.view(-1, self.output_dim))
 
         return output, hidden
 

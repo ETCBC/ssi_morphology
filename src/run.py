@@ -1,6 +1,7 @@
 """
     run the trained model using best first beam search
 """
+from time import time
 from torch.utils.data import DataLoader, Subset
 from .model import load_encoder_decoder
 from .evaluate import score_beam_search, score
@@ -18,16 +19,18 @@ if __name__ == "__main__":
     dataset = HebrewWords('data/t-in_voc', 'data/t-out')
 
     loader = DataLoader(
-            Subset(dataset, range(500)),
-            batch_size=2,
+            Subset(dataset, range(2500)),
+            batch_size=25,
             shuffle=False,
             collate_fn=collate_fn
             )
 
+    t0 = time()
     bs = score_beam_search(encoder, decoder, loader, max_length=20)
-    print('Best first Beam search')
+    print('Best first Beam search', time() - t0)
     print(bs)
 
+    t0 = time()
     gs = score(encoder, decoder, loader, max_length=20)
-    print('Greedy decoding')
+    print('Greedy decoding', time() - t0)
     print(gs)
