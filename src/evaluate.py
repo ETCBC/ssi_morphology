@@ -212,6 +212,168 @@ def print_queue(msg, queue):
             )
 
 
+class BatchedBFBS():
+    """A decoding job encapsulating partial and full decoded sequences."""
+
+    def __init__(self, state=None, num_results=5, beam_width=5, max_length=MAX_LENGTH):
+        self.is_done = False
+        self.is_waiting = False
+        self.queue = []
+        self.results = []
+        self.max_length = max_length
+        self.num_results = num_results
+        self.beam_width = beam_width
+        self.beams_per_length = [0] * (self.max_length + 2)
+        if state is not None:
+            heapq.heappush(self.queue, Beam(state=state))
+
+    def pre(self):
+        """Decode a sequence until we require a step with the network
+
+        Arguments:
+            queue   [Beam]    The heapq minqueue containing the beams
+            results [Beam]    Possible finished decodings
+            beams_per_length [int] of max_length
+            num_results int   The number of decodings to find
+            beam_width int    The branching factor for a beam
+            max_length int    Maximum length of a decoded sequence
+
+        Returns:
+            beam    The next Beam to feed through the network
+             or
+            None    No more beams to process
+        """
+        while len(self.queue) > 0 and len(self.results) < self.num_results:  # 4, stop condition
+            beam = heapq.heappop(self.queue)  # 5
+
+            # only consider beam_width beams of each length
+            if self.beams_per_length[beam.length] >= self.beam_width:  # 6
+                continue  # 7
+
+            self.beams_per_length[beam.length] += 1  # 8
+
+            if beam.last() == EOS_token:  # 9
+                self.results.append(beam)  # 10
+                continue
+
+            # beams without an EOS_token that are already maximum length cannot
+            # result in a proper sequence, so drop them.
+            if beam.length == self.max_length:
+                continue
+
+            self.is_waiting = True
+            return beam
+
+        self.is_done = True
+        return None
+
+    def post(self, beam, decoder_output, decoder_hidden):
+        """Postprocess the network output"""
+
+        self.is_waiting = False
+
+        # NOTE: the paper pushes all output to the queue however, the queue
+        # then showed up as a CPU bottleneck.  Here, only add the beams that
+        # have some chance of contributing.
+        #
+        # for now, with batch size is 1:
+        topv, topi = torch.topk(decoder_output, self.beam_width)
+
+        # bring back to cpu
+        topi = topi.cpu().numpy()
+        topv = topv.cpu().numpy()
+
+        for token, token_score in zip(topi, topv):  # 12
+            # Skip heuristices
+            # sh = s + h(x, y + token)  # 14
+            heapq.heappush(self.queue, beam.branch(  # 15
+                    token_score,
+                    token,
+                    decoder_hidden)
+                    )
+
+        if len(self.queue) == 0 or len(self.results) >= self.num_results:
+            self.done = True
+
+
+def batched_bfbs(
+        decoder,
+        decoder_hidden,
+        num_results=5,
+        beam_width=5,
+        max_length=MAX_LENGTH
+        ):
+    job = BatchedBFBS(state=decoder_hidden)
+
+    jobs = []
+    batch_size = decoder_hidden.size()[1]  # B
+    # decoder hidden is of shape [D=1 * num_layers, batch_size, H_out]
+    # decoder output is of shape [L=1, batch_size, D=1 * Hout]
+
+    for batch_idx in range(batch_size):
+        jobs.append(BatchedBFBS(
+            state=decoder_hidden[:, batch_idx, :].contiguous()
+        ))
+
+    # keep running while there are jobs to finish
+    while len(jobs) > 0:
+        beams_for_network = []
+
+        # get the next input for the network
+        for job in jobs:
+            if not job.is_done:
+                beam = job.pre()
+                if beam:
+                    beams_for_network.append(beam)
+
+        if len(beams_for_network) == 0:
+            break
+
+        # beam.state is of shape [num_layers, 1, H_out]
+        # we need to create [num_layers, batch_size, H_out]
+        # so drop the batch_size dim,
+        # stack along a new dimension
+        # and transpose 0 (batch_size) with 1 (num_layers)
+        hidden = torch.stack([
+            beam.state.squeeze(dim=1) for beam in beams_for_network
+            ])
+        hidden = torch.transpose(hidden, 0, 1).contiguous()
+        # [num_layers, batch_size, H_out]
+
+        # the input must be in shape [L=1, batch_size]
+        inpt = [beam.last() for beam in beams_for_network]
+        inpt = torch.LongTensor(inpt).to(device).view(1, -1)
+
+        # pass it through the network
+        decoder_output, decoder_hidden = decoder(inpt, hidden=hidden)
+
+        # cast the output to python list containing tensors of [H]
+        decoder_output = list(decoder_output.view(len(beams_for_network), -1))
+
+        # decoder hidden is of shape [D=1 * num_layers, batch_size, H_out]
+        # cast to a python list of [D=1*num_layers, H_out]
+        decoder_hidden = list(torch.transpose(decoder_hidden, 0, 1))
+
+        # postprocess output
+        for job in jobs:
+            if job.is_waiting:
+                job.post(
+                        beams_for_network.pop(0),
+                        decoder_output.pop(0),
+                        decoder_hidden.pop(0)
+                        )
+
+    results = []
+    for job in jobs:
+        if len(job.results) > 0:
+            best_beam = min(job.results)
+            results.append(best_beam.sequence[0:best_beam.length])
+        else:
+            results.append([SOS_token, EOS_token])
+
+    return results
+
+
 def best_first_beam_search(
         decoder,
         decoder_hidden,
@@ -314,7 +476,8 @@ def score_beam_search(encoder, decoder, dataset, max_length=MAX_LENGTH):
         if check_abort():
             break
 
-        batch_size = decoder_input.size()[1]  # B
+        # For non-batched beamn search
+        # batch_size = decoder_input.size()[1]  # B
 
         # do a normal encoder pass
         _, encoder_hidden = encoder(encoder_input, lengths=encoder_lengths)
@@ -326,12 +489,14 @@ def score_beam_search(encoder, decoder, dataset, max_length=MAX_LENGTH):
 
         system = []
         with torch.no_grad():
-            for batch_idx in range(batch_size):
-                decoder_ouput = best_first_beam_search(
-                        decoder,
-                        decoder_hidden[:, batch_idx:batch_idx+1, :].contiguous()
-                        )
-                system.append(decoder_ouput)
+            system = batched_bfbs(decoder, decoder_hidden)
+            # for non-batched beam search
+            # for batch_idx in range(batch_size):
+            #     decoder_ouput = batched_bfbs(  # best_first_beam_search(
+            #             decoder,
+            #             decoder_hidden[:, batch_idx:batch_idx+1, :].contiguous()
+            #             )
+            #     system.append(decoder_ouput)
 
         # Finished decoding, loop over the beams to compare strings
         for beam_idx, pred_tokens in enumerate(system):
