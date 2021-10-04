@@ -81,8 +81,6 @@ def score(encoder, decoder, dataset, max_length=MAX_LENGTH):
     different functions, and use better comparision metrics (fi 'badness'
     script.)
 
-    TODO: do not use packed input for the GRU
-
     Arguments:
         encoder
         decoder
