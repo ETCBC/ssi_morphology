@@ -271,17 +271,7 @@ class HebrewWords(Dataset):
         sample["output"] = text
         sample["encoded_output"] = encode_string(text, OUTPUT_WORD_TO_IDX, add_sos=True, add_eos=True)
 
-        return sample
-
-    def make_longer_sequences(self, data_list, sequence_length):
-
-        data_list = []
-        for w in range(len(data_list)+1):
-            seq = ' '.join([data_list[ind % len(data_list)] for ind in range(w, w + sequence_length)])
-            all_sequences.append(seq)
-         
-
-        
+        return sample       
 
 
 def collate_fn(batch):
