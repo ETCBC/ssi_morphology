@@ -30,95 +30,9 @@ MAX_LENGTH = 25
 
 MC_PREFIXES = ['!', ']', '@']
 
-SOS_token = 0
-EOS_token = 1
-
-INPUT_WORD_TO_IDX = {
-        'SOS': SOS_token,
-        'EOS': EOS_token,
-        ' ': 2,
-        '*': 3,
-        '.': 4,
-        ':': 5,
-        ';': 6,
-        '<': 7,
-        '>': 8,
-        '@': 9,
-        'A': 10,
-        'B': 11,
-        'C': 12,
-        'D': 13,
-        'E': 14,
-        'F': 15,
-        'G': 16,
-        'H': 17,
-        'I': 18,
-        'J': 19,
-        'K': 20,
-        'L': 21,
-        'M': 22,
-        'N': 23,
-        'O': 24,
-        'P': 25,
-        'Q': 26,
-        'R': 27,
-        'S': 28,
-        'T': 29,
-        'U': 30,
-        'V': 31,
-        'W': 32,
-        'X': 33,
-        'Y': 34,
-        'Z': 35
-    }
-
-OUTPUT_WORD_TO_IDX = {
-        'SOS': SOS_token,
-        'EOS': EOS_token,
-        ' ': 2,
-        '!': 3,
-        '&': 4,
-        '(': 5,
-        '+': 6,
-        '-': 7,
-        '/': 8,
-        ':': 9,
-        '<': 10,
-        '=': 11,
-        '>': 12,
-        '[': 13,
-        ']': 14,
-        '_': 15,
-        '~': 16,
-        'a': 17,
-        'B': 18,
-        'c': 19,
-        'C': 20,
-        'd': 21,
-        'D': 22,
-        'F': 23,
-        'G': 24,
-        'H': 25,
-        'J': 26,
-        'K': 27,
-        'L': 28,
-        'M': 29,
-        'n': 30,
-        'N': 31,
-        'o': 32,
-        'p': 33,
-        'P': 34,
-        'Q': 35,
-        'R': 36,
-        'S': 37,
-        'T': 38,
-        'u': 39,
-        'V': 40,
-        'W': 41,
-        'X': 42,
-        'Y': 43,
-        'Z': 44
-    }
+PAD_IDX = 0
+SOS_token = 1
+EOS_token = 2
 
 
 class HebrewVerses(Dataset):
@@ -215,6 +129,18 @@ class HebrewWords(Dataset):
             output_verses = f.readlines()
 
         assert(len(input_verses) == len(output_verses))
+        
+        self.INPUT_WORD_TO_IDX = {
+                                  'PAD': PAD_IDX,
+                                  'SOS': SOS_token,
+                                  'EOS': EOS_token 
+                                  }
+
+        self.OUTPUT_WORD_TO_IDX = {
+                              'PAD': PAD_IDX,
+                              'SOS': SOS_token,
+                              'EOS': EOS_token
+                              }
 
         self.input_data = []
         self.output_data = []
@@ -245,6 +171,14 @@ class HebrewWords(Dataset):
             if "*" not in input_seq:
                 self.input_data.append(input_seq)
                 self.output_data.append(output_seq)
+                for char in input_seq:
+                    if char not in self.INPUT_WORD_TO_IDX:
+                        self.INPUT_WORD_TO_IDX[char] = len(self.INPUT_WORD_TO_IDX)
+                for char in output_seq:
+                    if char not in self.OUTPUT_WORD_TO_IDX:
+                        self.OUTPUT_WORD_TO_IDX[char] = len(self.OUTPUT_WORD_TO_IDX)
+         
+        self.OUTPUT_IDX_TO_WORD = {idx: char for char, idx in self.OUTPUT_WORD_TO_IDX.items()}
 
         self.transform = transform
 
@@ -259,7 +193,7 @@ class HebrewWords(Dataset):
         text = self.input_data[idx]
         sample = {
                 "text": text,
-                "encoded_text": encode_string(text, INPUT_WORD_TO_IDX, add_sos=False, add_eos=True)
+                "encoded_text": encode_string(text, self.INPUT_WORD_TO_IDX, add_sos=False, add_eos=True)
                 }
 
         # data properties from the output
@@ -269,7 +203,7 @@ class HebrewWords(Dataset):
         text = mc_reduce(text)
 
         sample["output"] = text
-        sample["encoded_output"] = encode_string(text, OUTPUT_WORD_TO_IDX, add_sos=True, add_eos=True)
+        sample["encoded_output"] = encode_string(text, self.OUTPUT_WORD_TO_IDX, add_sos=True, add_eos=True)
 
         return sample       
 
@@ -294,23 +228,36 @@ def collate_fn(batch):
     """
     # Encoder input
     encoder_input = [b['encoded_text'] for b in batch]
-    encoder_input = pad_sequence(encoder_input)
+    encoder_input = pad_sequence(encoder_input, padding_value=PAD_IDX)
     encoder_lengths = [b['encoded_text'].size()[0] for b in batch]
 
     # Decoder input
     # the input for the decoder, truncated so that we do not predict
     # anything for the final EOS_token
     decoder_input = [b['encoded_output'][:-1] for b in batch]
-    decoder_input = pad_sequence(decoder_input)
+    decoder_input = pad_sequence(decoder_input, padding_value=PAD_IDX)
 
     # Decoder target
     # the output for the decoder, shifted such that the first output
     # corresponds to input of the SOS_token
     decoder_target = [b['encoded_output'][1:] for b in batch]
-    decoder_target = pad_sequence(decoder_target)
+    decoder_target = pad_sequence(decoder_target, padding_value=PAD_IDX)
     decoder_lengths = [b['encoded_output'].size()[0] - 1 for b in batch]
 
     return encoder_input, encoder_lengths, decoder_input, decoder_target, decoder_lengths
+
+# function to collate data samples into batch tesors
+def collate_transformer_fn(batch):
+    # WELLICHT NIET MEER NODIG!
+    src_batch, tgt_batch = [], []
+    
+    for sample in batch:
+        src_batch.append(sample['encoded_text'])
+        tgt_batch.append(sample['encoded_output'])
+
+    src_batch = pad_sequence(src_batch, padding_value=PAD_IDX)
+    tgt_batch = pad_sequence(tgt_batch, padding_value=PAD_IDX)
+    return src_batch, tgt_batch
 
 
 def encode_string(seq: str, d: dict, add_sos=False, add_eos=True):
