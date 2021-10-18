@@ -92,26 +92,26 @@ def main(args):
     for i in range(test_len):
     
         predicted = translate(loaded_transf, evaluation_data[i]['encoded_text'], bible.OUTPUT_IDX_TO_WORD, bible.OUTPUT_WORD_TO_IDX)
-        gold = evaluation_data[i]['output']
+        true_val = evaluation_data[i]['output']
         print(evaluation_data[i]['encoded_text'])
         print(predicted)
-        print(gold)
+        print(true_val)
         predicted_words = predicted.split()
-        gold_words = gold.split()
+        true_val_words = true_val.split()
     
         if len(predicted_words) != args.input_seq_len:
             continue
         
-        if predicted == gold:
+        if predicted == true_val:
             correct_complete_sequence += 1
         
         for word_idx in range(args.input_seq_len):
-            if predicted_words[word_idx] == gold_words[word_idx]:
+            if predicted_words[word_idx] == true_val_words[word_idx]:
                 correct_all_words[word_idx] += 1
             
-                word_eval_dict[gold_words[word_idx]][word_idx].append('correct')
+                word_eval_dict[true_val_words[word_idx]][word_idx].append('correct')
             else:
-                word_eval_dict[gold_words[word_idx]][word_idx].append('wrong')
+                word_eval_dict[true_val_words[word_idx]][word_idx].append('wrong')
 
     print('complete string', correct_complete_sequence / test_len)
     print('distinct words', [correct_count / test_len for correct_count in correct_all_words])    
