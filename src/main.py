@@ -63,17 +63,17 @@ def main(args):
     train_dataloader = DataLoader(training_data, batch_size=BATCH_SIZE, collate_fn=collate_fn)
     eval_dataloader = DataLoader(evaluation_data, batch_size=50, shuffle=False, collate_fn=collate_fn)
     
-    transformer, loss_fn, optimizer = initialize_transformer_model(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, 
-                                     EMB_SIZE, NHEAD, SRC_VOCAB_SIZE, TGT_VOCAB_SIZE, FFN_HID_DIM, PAD_IDX, learning_rate)
+    #transformer, loss_fn, optimizer = initialize_transformer_model(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, 
+    #                                 EMB_SIZE, NHEAD, SRC_VOCAB_SIZE, TGT_VOCAB_SIZE, FFN_HID_DIM, PAD_IDX, learning_rate)
     
     NUM_EPOCHS = 12
-    trained_transformer = train(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, NUM_EPOCHS, PAD_IDX, torch_seed, learning_rate, log_dir, 
-               BATCH_SIZE, bible.INPUT_WORD_TO_IDX, bible.OUTPUT_WORD_TO_IDX) 
+    #trained_transformer = train(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, NUM_EPOCHS, PAD_IDX, torch_seed, learning_rate, log_dir, 
+    #           BATCH_SIZE, bible.INPUT_WORD_TO_IDX, bible.OUTPUT_WORD_TO_IDX) 
 
     save_path = '.' 
     model_name = f'seq2seq_seqlen{args.input_seq_len}_epochs{NUM_EPOCHS}_transformer.pth'
     
-    torch.save(trained_transformer.state_dict(), os.path.join(save_path, model_name))
+    #torch.save(trained_transformer.state_dict(), os.path.join(save_path, model_name))
 
     loaded_transf = Seq2SeqTransformer(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, EMB_SIZE, 
                                  NHEAD, SRC_VOCAB_SIZE, TGT_VOCAB_SIZE, FFN_HID_DIM)
@@ -87,7 +87,7 @@ def main(args):
     correct_complete_sequence = 0
     correct_all_words = [0 for i in range(args.input_seq_len)]
 
-    test_len = 100
+    test_len = 30000
     print(bible.OUTPUT_IDX_TO_WORD)
     for i in range(test_len):
     
@@ -99,19 +99,22 @@ def main(args):
         predicted_words = predicted.split()
         true_val_words = true_val.split()
     
-        if len(predicted_words) != args.input_seq_len:
-            continue
+        #if len(predicted_words) != args.input_seq_len:
+        #    continue
         
         if predicted == true_val:
             correct_complete_sequence += 1
         
         for word_idx in range(args.input_seq_len):
-            if predicted_words[word_idx] == true_val_words[word_idx]:
-                correct_all_words[word_idx] += 1
+            try:
+                if predicted_words[word_idx] == true_val_words[word_idx]:
+                    correct_all_words[word_idx] += 1
             
-                word_eval_dict[true_val_words[word_idx]][word_idx].append('correct')
-            else:
-                word_eval_dict[true_val_words[word_idx]][word_idx].append('wrong')
+                    word_eval_dict[true_val_words[word_idx]][word_idx].append('correct')
+                else:
+                    word_eval_dict[true_val_words[word_idx]][word_idx].append('wrong')
+            except:
+                continue
 
     print('complete string', correct_complete_sequence / test_len)
     print('distinct words', [correct_count / test_len for correct_count in correct_all_words])    
