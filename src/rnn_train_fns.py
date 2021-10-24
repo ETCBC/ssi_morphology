@@ -9,6 +9,7 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from torch.utils.tensorboard import SummaryWriter
 
 from data import decode_string
+from evaluate import score
 from model_rnn import HebrewEncoder, HebrewDecoder, save_encoder_decoder, reshape_hidden
 
 # https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html
@@ -103,7 +104,7 @@ def train_rnn(training_data=None, evaluation_data=None,
 
         # per epoch evaluation
         oldtimer = time.time()
-        results = score(encoder, decoder, evaluation_data)
+        results = score(encoder, decoder, evaluation_data, outp_w2idx, )
         timer = time.time()
 
         writer.add_scalar('Eval/accuracy', results['accuracy'], global_step=counter)
