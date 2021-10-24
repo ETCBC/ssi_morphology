@@ -23,6 +23,7 @@ def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_sym
 
         ys = torch.cat([ys,
                         torch.ones(1, 1).type_as(src.data).fill_(next_word)], dim=0)
+                        
         if next_word == end_symbol:
             break
     return ys
@@ -32,8 +33,11 @@ def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_sym
 def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD: dict, OUTPUT_WORD_TO_IDX: dict):
     model.eval()
     src = encoded_sentence.view(-1, 1)
+    #print('encoded_sentence: ', src)
     num_tokens = src.shape[0]
     src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool)
     tgt_tokens = greedy_decode(
-        model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX["SOS"], OUTPUT_WORD_TO_IDX["EOS"]).flatten()
+        model, src, src_mask, num_tokens-3, OUTPUT_WORD_TO_IDX["SOS"], OUTPUT_WORD_TO_IDX["EOS"]).flatten()
+    print('target_tokens: ', tgt_tokens)
+    
     return "".join([OUTPUT_IDX_TO_WORD[idx] for idx in list(tgt_tokens.cpu().numpy())]).replace("SOS", "").replace("EOS", "")
