@@ -5,15 +5,18 @@ import time
 
 import torch
 import torch.nn as nn
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from torch.utils.tensorboard import SummaryWriter
 
-from model_lstm import HebrewEncoder, HebrewDecoder, save_encoder_decoder, reshape_hidden
+from data import decode_string
+from model_rnn import HebrewEncoder, HebrewDecoder, save_encoder_decoder, reshape_hidden
 
 # https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html
-def train_lstm(training_data=None, evaluation_data=None,
+def train_rnn(training_data=None, evaluation_data=None,
           encoder=None, decoder=None,
           encoder_optimizer=None, decoder_optimizer=None,
           loss_function=None, log_dir=None,
+          inp_wo2idx=None, outp_w2idx=None,
           max_epoch=100, torch_seed=42, learning_rate=0.1, batch_size=20):
           
     # make the runs as repeatable as possible
@@ -44,14 +47,14 @@ def train_lstm(training_data=None, evaluation_data=None,
 
             # go over the input sequence
             encoder_output, encoder_hidden = encoder(encoder_input, lengths=encoder_lengths)
-            
+           
             # take over with the decoder and let it run over the output sequence
-            print('encoder', encoder.D)
-            decoder_hidden = encoder_hidden
-            #decoder_hidden = reshape_hidden(encoder_hidden, encoder.num_layers, encoder.D, -1, encoder.hidden_dim)
-            print('HALLOOOO', decoder_hidden.shape, decoder_input.shape)
+            
+            # if bidir == 2, then encoder.D = 2, then encoder_hidden.shape[2] is too big (factor 2).
+            decoder_hidden = reshape_hidden(encoder_hidden, encoder.num_layers, encoder.D, -1, encoder.hidden_dim)
+ 
             decoder_output, decoder_hidden = decoder(decoder_input, hidden=decoder_hidden, lengths=decoder_lengths)
-            print('HALLOOOO2')
+           
             # pack the target tokens in the same way we'll get the output
             decoder_target = pack_padded_sequence(decoder_target, decoder_lengths, enforce_sorted=False)
 
@@ -72,18 +75,18 @@ def train_lstm(training_data=None, evaluation_data=None,
                 timer = time.time()
                 sentence = encoder_input[:, 0].view(-1)  # take the first sentence
                 sentence = sentence[0:encoder_lengths[0]]  # trim padding
-                sentence = decode_string(sentence, INPUT_WORD_TO_IDX)
+                sentence = decode_string(sentence, inp_wo2idx)
 
                 gold = decoder_input[:, 0].view(-1)  # take the first sentence
                 gold = gold[1:decoder_lengths[0]]  # trim padding and SOS
-                gold = decode_string(gold, OUTPUT_WORD_TO_IDX)
+                gold = decode_string(gold, outp_w2idx)
 
                 # greedy decode
                 system, system_lengths = pad_packed_sequence(decoder_output)  # (To, B, H)
                 system = torch.argmax(system, dim=2)  # (To, B)
                 system = system[:, 0]  # take first sentence
                 system = system[0:system_lengths[0]]  # remove padding
-                system = decode_string(system, OUTPUT_WORD_TO_IDX)
+                system = decode_string(system, outp_w2idx)
 
                 # TODO: is NLLLoss averaged or summed?
                 print(f'step={counter} epoch={epoch} t={timer - timer_start} dt={timer - oldtimer} batchloss={loss.item()}')
