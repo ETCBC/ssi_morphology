@@ -11,7 +11,7 @@ from model_transformer import Seq2SeqTransformer
 
 from config import check_abort, abort_handler
 
-def initialize_transformer_model(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, EMB_SIZE, NHEAD, SRC_VOCAB_SIZE, TGT_VOCAB_SIZE, FFN_HID_DIM, PAD_IDX, lr):
+def initialize_transformer_model(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, EMB_SIZE, NHEAD, SRC_VOCAB_SIZE, TGT_VOCAB_SIZE, FFN_HID_DIM):
 
     transformer = Seq2SeqTransformer(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, EMB_SIZE, 
                                  NHEAD, SRC_VOCAB_SIZE, TGT_VOCAB_SIZE, FFN_HID_DIM)
@@ -21,9 +21,8 @@ def initialize_transformer_model(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, EMB_SIZ
             nn.init.xavier_uniform_(p)
 
     transformer = transformer.to(device)
-    loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
-    optimizer = torch.optim.Adam(transformer.parameters(), lr=lr, betas=(0.9, 0.98), eps=1e-9)
-    return transformer, loss_fn, optimizer
+
+    return transformer
 
 
 def generate_square_subsequent_mask(sz):
@@ -44,7 +43,7 @@ def create_mask(src, tgt, PAD_IDX):
     return src_mask, tgt_mask, src_padding_mask, tgt_padding_mask
 
 
-def train(model, loss_fn, optimizer, train_dataloader, eval_dataloader, NUM_EPOCHS, PAD_IDX, torch_seed, learning_rate, log_dir, batch_size, INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX):
+def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataloader, NUM_EPOCHS, PAD_IDX, torch_seed, learning_rate, log_dir, batch_size, INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX):
 
     torch.manual_seed(torch_seed)
     
@@ -94,13 +93,16 @@ def train(model, loss_fn, optimizer, train_dataloader, eval_dataloader, NUM_EPOC
             if counter % 10*batch_size == 0:
                 oldtimer = timer
                 timer = time.time()
-                #sentence = src[:, 0].view(-1)  # take the first sentence
-                #sentence = sentence[0:encoder_lengths[0]]  # trim padding
-                #sentence = decode_string(sentence, INPUT_WORD_TO_IDX) 
+                
+                model.eval()
+                
+                sentence = src[:, 0].view(-1)  # take the first sentence
+                sentence = sentence[0:encoder_lengths[0]]  # trim padding
+                sentence = decode_string(sentence, INPUT_WORD_TO_IDX) 
 
-                #gold = tgt[:, 0].view(-1)  # take the first sentence
-                #gold = gold[1:decoder_lengths[0]]  # trim padding and SOS
-                #gold = decode_string(gold, OUTPUT_WORD_TO_IDX)                
+                gold = tgt[:, 0].view(-1)  # take the first sentence
+                gold = gold[1:decoder_lengths[0]]  # trim padding and SOS
+                gold = decode_string(gold, OUTPUT_WORD_TO_IDX)                
         
                 # to add: system
                 #sentence = src[:, 0].view(-1)
@@ -111,6 +113,8 @@ def train(model, loss_fn, optimizer, train_dataloader, eval_dataloader, NUM_EPOC
                 #print(f'\tverse: {sentence}\tgold: {gold}\t') # system: {system}')
                 #writer.add_text('sample', sentence + "<=>" + system, global_step=counter)
                 #writer.add_scalar('Loss/train', loss.item(), global_step=counter)
+                
+                model.train()
                 
     return model
 

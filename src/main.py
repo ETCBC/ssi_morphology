@@ -8,12 +8,15 @@ from timeit import default_timer as timer
 from config import check_abort, abort_handler, device
 
 import torch
+import torch.nn as nn
+import torch.optim as optim
 from torch.utils.data import random_split, DataLoader
 
-from data import HebrewWords, collate_fn, collate_transformer_fn
-
+from data import HebrewWords, collate_fn #, collate_transformer_fn
 from model_transformer import Seq2SeqTransformer
-from transformer_train_fns import initialize_transformer_model, train, evaluate
+from model_lstm import HebrewEncoder, HebrewDecoder, save_encoder_decoder #, reshape_hidden
+from transformer_train_fns import initialize_transformer_model, train_transformer, evaluate
+from lstm_train_fns import train_lstm
 from evaluate_transformer import greedy_decode, translate
 
 
@@ -32,6 +35,15 @@ def main(args):
     parser.add_argument("input_filename", help="Please specificy the input datafile in the folder data", type=str)
     parser.add_argument("output_filename", help="Please specificy the output datafile in the folder data", type=str)
     parser.add_argument("input_seq_len", help="Designate the number of words in one input string", type=int)
+    parser.add_argument("epochs", help="Specify the number of training epochs", type=int)
+    parser.add_argument("learning_rate", help="Specify the learning rate", type=float)
+    
+    parser.add_argument("model_type", help="Chooses type of model: 'lstm' or 'transformer'", type=str)
+    
+    # Hyperparameters of the LSTM model.
+    parser.add_argument("hidden_dim", help="Optional: Number of cells in LSTM layer", type=int, nargs='?')
+    parser.add_argument("num_layers", help="Optional: Nmber of hidden layers", type=int, nargs='?')
+    parser.add_argument("bidir", help="Optional: is the LSTM model bidirectional or not", type=bool, nargs='?')
     
     args = parser.parse_args()
     
@@ -55,23 +67,57 @@ def main(args):
     SRC_VOCAB_SIZE = len(bible.INPUT_WORD_TO_IDX)+2
     TGT_VOCAB_SIZE = len(bible.OUTPUT_WORD_TO_IDX)+2
     PAD_IDX = bible.INPUT_WORD_TO_IDX['PAD']
-    learning_rate = 0.0001
+    #learning_rate = 0.0001
+    #NUM_EPOCHS = 12
     
     # log settings
-    log_dir = f'runs/{learning_rate}lr_transf' # f'runs/{num_layers}layers_{hidden_dim}hidden_{torch_seed}seed_{learning_rate}lr_transf'
+    #log_dir = f'runs/{args.learning_rate}lr_transf_runs/{num_layers}layers_{hidden_dim}hidden_{torch_seed}seed_{learning_rate}lr_'
+    
     
     train_dataloader = DataLoader(training_data, batch_size=BATCH_SIZE, collate_fn=collate_fn)
     eval_dataloader = DataLoader(evaluation_data, batch_size=50, shuffle=False, collate_fn=collate_fn)
     
-    #transformer, loss_fn, optimizer = initialize_transformer_model(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, 
-    #                                 EMB_SIZE, NHEAD, SRC_VOCAB_SIZE, TGT_VOCAB_SIZE, FFN_HID_DIM, PAD_IDX, learning_rate)
+    ##############################################################
     
-    NUM_EPOCHS = 12
-    #trained_transformer = train(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, NUM_EPOCHS, PAD_IDX, torch_seed, learning_rate, log_dir, 
-    #           BATCH_SIZE, bible.INPUT_WORD_TO_IDX, bible.OUTPUT_WORD_TO_IDX) 
+    if args.model_type == 'transformer':
+        transformer = initialize_transformer_model(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, 
+                                         EMB_SIZE, NHEAD, SRC_VOCAB_SIZE, TGT_VOCAB_SIZE, FFN_HID_DIM)
+                                         
+        loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
+        optimizer = torch.optim.Adam(transformer.parameters(), lr=args.learning_rate, betas=(0.9, 0.98), eps=1e-9)
+        
+        log_dir = f'runs/{args.input_seq_len}seq_len_{torch_seed}seed_{args.learning_rate}lr_transformer'
+    
+        trained_transformer = train_transformer(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, args.epochs, PAD_IDX, torch_seed, learning_rate, log_dir, 
+                   BATCH_SIZE, bible.INPUT_WORD_TO_IDX, bible.OUTPUT_WORD_TO_IDX) 
+                   
+    elif args.model_type == 'lstm':
+        # create the network
+        encoder = HebrewEncoder(input_dim=len(bible.INPUT_WORD_TO_IDX), hidden_dim=args.hidden_dim, num_layers=args.num_layers, bidir=args.bidir)
+        decoder = HebrewDecoder(hidden_dim=1*args.hidden_dim, output_dim=len(bible.OUTPUT_WORD_TO_IDX), num_layers=args.num_layers)
+
+        # function to optimize
+        loss_function = nn.NLLLoss()
+
+        # log settings
+        log_dir = f'runs/{args.input_seq_len}seq_len_{args.num_layers}layers_{args.hidden_dim}hidden_{torch_seed}seed_{args.learning_rate}lr_lstm'
+
+        # optimization strategy
+        encoder_optimizer = optim.Adam(encoder.parameters(), lr=args.learning_rate)
+        decoder_optimizer = optim.Adam(decoder.parameters(), lr=args.learning_rate)
+        
+        train_lstm(training_data=train_dataloader, evaluation_data=eval_dataloader,
+          encoder=encoder, decoder=decoder,
+          encoder_optimizer=encoder_optimizer, decoder_optimizer=decoder_optimizer,
+          loss_function=loss_function, log_dir=log_dir,
+          max_epoch=100, torch_seed=42, learning_rate=args.learning_rate, batch_size=20)
+    
+
+    ################################################################
 
     save_path = '.' 
     model_name = f'seq2seq_seqlen{args.input_seq_len}_epochs{NUM_EPOCHS}_transformer.pth'
+    #model_name = 'seq2seq_seqlen4_epochs12_transformer19102021.pth'
     
     #torch.save(trained_transformer.state_dict(), os.path.join(save_path, model_name))
 
@@ -87,7 +133,7 @@ def main(args):
     correct_complete_sequence = 0
     correct_all_words = [0 for i in range(args.input_seq_len)]
 
-    test_len = 30000
+    test_len = 100
     print(bible.OUTPUT_IDX_TO_WORD)
     for i in range(test_len):
     
