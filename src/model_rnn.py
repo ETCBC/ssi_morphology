@@ -19,9 +19,6 @@ def reshape_hidden(hidden, num_layers, num_directions, batch, hidden_dim):
     dir_a = hidden.view(num_layers, 2, batch, hidden_dim)[:, 0, :, :]  # [num_layers, batch, hidden_dim]
     dir_b = hidden.view(num_layers, 2, batch, hidden_dim)[:, 1, :, :]  # [num_layers, batch, hidden_dim]
 
-    print('HIDDEN SHAPE', hidden.shape)
-    print('SHAPE', torch.cat((dir_a, dir_b), dim=2).shape)
-
     return torch.cat((dir_a, dir_b), dim=2)
 
 def squash_packed(x, fn, dim=None):
@@ -60,7 +57,6 @@ class HebrewEncoder(nn.Module):
         self.num_layers = num_layers
         self.bidir = bidir
         self.D = 2 if bidir else 1
-
         self.input_embeddings = nn.Embedding(input_dim, hidden_dim)
         self.gru = nn.GRU(hidden_dim, hidden_dim, self.num_layers, bidirectional=self.bidir)
         self.to(device)
