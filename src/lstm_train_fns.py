@@ -47,7 +47,8 @@ def train_lstm(training_data=None, evaluation_data=None,
             
             # take over with the decoder and let it run over the output sequence
             print('encoder', encoder.D)
-            decoder_hidden = reshape_hidden(encoder_hidden, encoder.num_layers, encoder.D, -1, encoder.hidden_dim)
+            decoder_hidden = encoder_hidden
+            #decoder_hidden = reshape_hidden(encoder_hidden, encoder.num_layers, encoder.D, -1, encoder.hidden_dim)
             print('HALLOOOO', decoder_hidden.shape, decoder_input.shape)
             decoder_output, decoder_hidden = decoder(decoder_input, hidden=decoder_hidden, lengths=decoder_lengths)
             print('HALLOOOO2')
