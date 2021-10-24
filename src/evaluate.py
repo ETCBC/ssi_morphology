@@ -7,11 +7,11 @@ from torch.nn.utils.rnn import pad_packed_sequence
 
 from config import device, check_abort
 from data import decode_string
-from data import OUTPUT_WORD_TO_IDX, EOS_token
+from data import EOS_token
 from data import MAX_LENGTH
 
 
-def score(encoder, decoder, dataset, max_length=MAX_LENGTH):
+def score(encoder, decoder, dataset, OUTPUT_WORD_TO_IDX, EOS_token, MAX_LENGTH, max_length=MAX_LENGTH):
     """Evaluate a trained encoder/decoder on a dataset using greedy decoding.
 
     We evaluate in batches to make the evaluation run faster. This adds some
