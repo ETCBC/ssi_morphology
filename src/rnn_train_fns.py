@@ -104,7 +104,7 @@ def train_rnn(training_data=None, evaluation_data=None,
 
         # per epoch evaluation
         oldtimer = time.time()
-        results = score(encoder, decoder, evaluation_data, outp_w2idx, )
+        results = score(encoder, decoder, evaluation_data, outp_w2idx)
         timer = time.time()
 
         writer.add_scalar('Eval/accuracy', results['accuracy'], global_step=counter)
