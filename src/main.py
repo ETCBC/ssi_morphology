@@ -66,7 +66,6 @@ def main(args):
             bible, [len_train, len_eval], generator=torch.Generator().manual_seed(42))
             
     torch_seed = 42
-    ffn_hid_dim = 512
     batch_size = 128
 
     src_vocab_size = len(bible.INPUT_WORD_TO_IDX)+2
@@ -76,6 +75,7 @@ def main(args):
     
     if args.model_type == 'transformer':
     
+        ffn_hid_dim = 512
         train_dataloader = DataLoader(training_data, batch_size=batch_size, collate_fn=collate_transformer_fn)
         eval_dataloader = DataLoader(evaluation_data, batch_size=50, shuffle=False, collate_fn=collate_transformer_fn)
         
@@ -106,7 +106,6 @@ def main(args):
         train_dataloader = DataLoader(training_data, batch_size=batch_size, collate_fn=collate_fn)
         eval_dataloader = DataLoader(evaluation_data, batch_size=50, shuffle=False, collate_fn=collate_fn)
         
-        print('args.bidir', args.bidir)
         encoder = HebrewEncoder(input_dim=len(bible.INPUT_WORD_TO_IDX), hidden_dim=args.hidden_dim, num_layers=args.num_layers, bidir=args.bidir)
         decoder = HebrewDecoder(hidden_dim=1*args.hidden_dim, output_dim=len(bible.OUTPUT_WORD_TO_IDX), num_layers=args.num_layers)
 
