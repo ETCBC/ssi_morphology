@@ -248,7 +248,7 @@ def collate_fn(batch):
 
 # function to collate data samples into batch tesors
 def collate_transformer_fn(batch):
-    # WELLICHT NIET MEER NODIG!
+  
     src_batch, tgt_batch = [], []
     
     for sample in batch:
@@ -352,3 +352,18 @@ def read_data_from_file(filename: str):
             line = fp.readline()
 
     return data_dict
+    
+    
+def str2bool(v):
+    """
+    Helper function needed to be able to use 
+    boolean variables in the command line arguments.
+    """
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')

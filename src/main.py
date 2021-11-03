@@ -12,22 +12,13 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import random_split, DataLoader
 
-from data import HebrewWords, collate_fn #, collate_transformer_fn
+from data import HebrewWords, collate_fn, collate_transformer_fn, str2bool
 from model_transformer import Seq2SeqTransformer
 from model_rnn import HebrewEncoder, HebrewDecoder, save_encoder_decoder #, reshape_hidden
 from transformer_train_fns import initialize_transformer_model, train_transformer, evaluate
 from rnn_train_fns import train_rnn
-from evaluate_transformer import greedy_decode, translate
+from evaluate_transformer import greedy_decode, translate, evaluate_transformer_model
 
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 def main(args):
     """
@@ -49,6 +40,13 @@ def main(args):
     
     parser.add_argument("model_type", help="Chooses type of model: 'rnn' or 'transformer'", type=str)
     
+    # Hyperparameters of the Transformer model.
+    parser.add_argument("emb_size", help="Optional: Embedding size, must be divisible by number of heads (nhead)", type=int, default=512, nargs='?')
+    parser.add_argument("nhead", help="Optional: Number of heads", type=int, default=8, nargs='?')
+    parser.add_argument("num_encoder_layers", help="Optional: Number of layers in encoder", type=int, default=3, nargs='?')
+    parser.add_argument("num_decoder_layers", help="Optional: Number of layers in decoder", type=int, default=3, nargs='?')
+    
+    
     # Hyperparameters of the RNN model.
     parser.add_argument("hidden_dim", help="Optional: Number of cells in RNN layer", type=int, nargs='?')
     parser.add_argument("num_layers", help="Optional: Nmber of hidden layers", type=int, nargs='?')
@@ -63,126 +61,72 @@ def main(args):
     bible = HebrewWords(input_file, output_file, args.input_seq_len)
     len_train = int(0.7 * len(bible))
     len_eval = len(bible) - len_train
-    # alwyas use the same seed for train/test split
+ 
     training_data, evaluation_data = random_split(
             bible, [len_train, len_eval], generator=torch.Generator().manual_seed(42))
             
     torch_seed = 42
-    EMB_SIZE = 512
-    NHEAD = 8
-    FFN_HID_DIM = 512
-    BATCH_SIZE = 128
-    NUM_ENCODER_LAYERS = 3
-    NUM_DECODER_LAYERS = 3
-    SRC_VOCAB_SIZE = len(bible.INPUT_WORD_TO_IDX)+2
-    TGT_VOCAB_SIZE = len(bible.OUTPUT_WORD_TO_IDX)+2
+    ffn_hid_dim = 512
+    batch_size = 128
+
+    src_vocab_size = len(bible.INPUT_WORD_TO_IDX)+2
+    tgt_vocab_size = len(bible.OUTPUT_WORD_TO_IDX)+2
     PAD_IDX = bible.INPUT_WORD_TO_IDX['PAD']
-    #learning_rate = 0.0001
-    #NUM_EPOCHS = 12
-    
-    # log settings
-    #log_dir = f'runs/{args.learning_rate}lr_transf_runs/{num_layers}layers_{hidden_dim}hidden_{torch_seed}seed_{learning_rate}lr_'
-    
-    
-    train_dataloader = DataLoader(training_data, batch_size=BATCH_SIZE, collate_fn=collate_fn)
-    eval_dataloader = DataLoader(evaluation_data, batch_size=50, shuffle=False, collate_fn=collate_fn)
-    
-    ##############################################################
+ 
     
     if args.model_type == 'transformer':
-        transformer = initialize_transformer_model(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, 
-                                         EMB_SIZE, NHEAD, SRC_VOCAB_SIZE, TGT_VOCAB_SIZE, FFN_HID_DIM)
+    
+        train_dataloader = DataLoader(training_data, batch_size=batch_size, collate_fn=collate_transformer_fn)
+        eval_dataloader = DataLoader(evaluation_data, batch_size=50, shuffle=False, collate_fn=collate_transformer_fn)
+        
+        transformer = initialize_transformer_model(args.num_encoder_layers, args.num_decoder_layers, 
+                                                   args.emb_size, args.nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
                                          
         loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
         optimizer = torch.optim.Adam(transformer.parameters(), lr=args.learning_rate, betas=(0.9, 0.98), eps=1e-9)
         
-        log_dir = f'runs/{args.input_seq_len}seq_len_{torch_seed}seed_{args.learning_rate}lr_transformer'
+        log_dir = f'runs/{args.input_seq_len}seq_len_{torch_seed}seed_{args.learning_rate}lr_{args.epochs}epochs_{args.emb_size}embsize_{args.nhead}nhead_{args.num_encoder_layers}nenclayers_{args.num_decoder_layers}numdeclayers_transformer'
     
-        trained_transformer = train_transformer(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, args.epochs, PAD_IDX, torch_seed, learning_rate, log_dir, 
-                   BATCH_SIZE, bible.INPUT_WORD_TO_IDX, bible.OUTPUT_WORD_TO_IDX)
+        trained_transformer = train_transformer(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, args.epochs, PAD_IDX, torch_seed, args.learning_rate, log_dir, 
+                   batch_size, bible.INPUT_WORD_TO_IDX, bible.OUTPUT_WORD_TO_IDX)
 
-        model_name = f'seq2seq_seqlen{args.input_seq_len}_epochs{args.epochs}_transformer.pth'                   
-                   
+        model_path = './transformer_models'
+        model_name = f'seq2seq_{args.input_seq_len}seqlen_{torch_seed}seed_{args.learning_rate}lr_{args.epochs}epochs_{args.emb_size}embedsize__{args.nhead}nhead_{args.num_encoder_layers}nenclayers_{args.num_decoder_layers}numdeclayers_transformer.pth'    
+
+        torch.save(trained_transformer.state_dict(), os.path.join(model_path, model_name))    
+
+        evaluate_transformer_model(args.input_seq_len, args.learning_rate, args.epochs, args.num_encoder_layers, 
+                                   args.num_decoder_layers, args.emb_size, args.nhead,
+                                   src_vocab_size, tgt_vocab_size, ffn_hid_dim,
+                                   model_path, model_name, evaluation_data, 
+                                   bible.OUTPUT_IDX_TO_WORD, bible.OUTPUT_WORD_TO_IDX)
+                                                              
     elif args.model_type == 'rnn':
-        # create the network
+    
+        train_dataloader = DataLoader(training_data, batch_size=batch_size, collate_fn=collate_fn)
+        eval_dataloader = DataLoader(evaluation_data, batch_size=50, shuffle=False, collate_fn=collate_fn)
+        
         print('args.bidir', args.bidir)
         encoder = HebrewEncoder(input_dim=len(bible.INPUT_WORD_TO_IDX), hidden_dim=args.hidden_dim, num_layers=args.num_layers, bidir=args.bidir)
         decoder = HebrewDecoder(hidden_dim=1*args.hidden_dim, output_dim=len(bible.OUTPUT_WORD_TO_IDX), num_layers=args.num_layers)
 
-        # function to optimize
+        
         loss_function = nn.NLLLoss()
 
-        # log settings
-        log_dir = f'runs/{args.input_seq_len}seq_len_{args.num_layers}layers_{args.hidden_dim}hidden_{torch_seed}seed_{args.learning_rate}lr_rnn'
-
-        # optimization strategy
         encoder_optimizer = optim.Adam(encoder.parameters(), lr=args.learning_rate)
         decoder_optimizer = optim.Adam(decoder.parameters(), lr=args.learning_rate)
+        
+        log_dir = f'runs/{args.input_seq_len}seq_len_{args.num_layers}layers_{args.hidden_dim}hidden_{torch_seed}seed_{args.learning_rate}lr_rnn'
         
         train_rnn(training_data=train_dataloader, evaluation_data=eval_dataloader,
           encoder=encoder, decoder=decoder,
           encoder_optimizer=encoder_optimizer, decoder_optimizer=decoder_optimizer,
           loss_function=loss_function, log_dir=log_dir,
           inp_wo2idx=bible.INPUT_WORD_TO_IDX, outp_w2idx=bible.OUTPUT_WORD_TO_IDX,
-          max_epoch=100, torch_seed=42, learning_rate=args.learning_rate, batch_size=20
+          max_epoch=args.epochs, torch_seed=42, learning_rate=args.learning_rate, batch_size=20
           )
     
         model_name = f'seq2seq_seqlen{args.input_seq_len}_epochs{args.epochs}_rnn.pth'
-
-    ################################################################
-
-    save_path = '.' 
-    
-    #model_name = 'seq2seq_seqlen4_epochs12_transformer19102021.pth'
-    
-    #torch.save(trained_transformer.state_dict(), os.path.join(save_path, model_name))
-
-    loaded_transf = Seq2SeqTransformer(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, EMB_SIZE, 
-                                 NHEAD, SRC_VOCAB_SIZE, TGT_VOCAB_SIZE, FFN_HID_DIM)
-                                 
-    loaded_transf.load_state_dict(torch.load(os.path.join(save_path, model_name)))
-    loaded_transf.eval()
-
-
-    word_eval_dict = collections.defaultdict(lambda: collections.defaultdict(list))
-
-    correct_complete_sequence = 0
-    correct_all_words = [0 for i in range(args.input_seq_len)]
-
-    test_len = 100
-    print(bible.OUTPUT_IDX_TO_WORD)
-    for i in range(test_len):
-    
-        predicted = translate(loaded_transf, evaluation_data[i]['encoded_text'], bible.OUTPUT_IDX_TO_WORD, bible.OUTPUT_WORD_TO_IDX)
-        true_val = evaluation_data[i]['output']
-        print(evaluation_data[i]['encoded_text'])
-        print(predicted)
-        print(true_val)
-        predicted_words = predicted.split()
-        true_val_words = true_val.split()
-    
-        #if len(predicted_words) != args.input_seq_len:
-        #    continue
-        
-        if predicted == true_val:
-            correct_complete_sequence += 1
-        
-        for word_idx in range(args.input_seq_len):
-            try:
-                if predicted_words[word_idx] == true_val_words[word_idx]:
-                    correct_all_words[word_idx] += 1
-            
-                    word_eval_dict[true_val_words[word_idx]][word_idx].append('correct')
-                else:
-                    word_eval_dict[true_val_words[word_idx]][word_idx].append('wrong')
-            except:
-                continue
-
-    print('complete string', correct_complete_sequence / test_len)
-    print('distinct words', [correct_count / test_len for correct_count in correct_all_words])    
-
-        
-    
 
 
 if __name__ == '__main__':

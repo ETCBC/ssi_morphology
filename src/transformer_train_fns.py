@@ -11,10 +11,10 @@ from model_transformer import Seq2SeqTransformer
 
 from config import check_abort, abort_handler
 
-def initialize_transformer_model(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, EMB_SIZE, NHEAD, SRC_VOCAB_SIZE, TGT_VOCAB_SIZE, FFN_HID_DIM):
+def initialize_transformer_model(num_encoder_layers, num_decoder_layers, emb_size, nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim):
 
-    transformer = Seq2SeqTransformer(NUM_ENCODER_LAYERS, NUM_DECODER_LAYERS, EMB_SIZE, 
-                                 NHEAD, SRC_VOCAB_SIZE, TGT_VOCAB_SIZE, FFN_HID_DIM)
+    transformer = Seq2SeqTransformer(num_encoder_layers, num_decoder_layers, emb_size, 
+                                 nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
 
     for p in transformer.parameters():
         if p.dim() > 1:
@@ -43,7 +43,7 @@ def create_mask(src, tgt, PAD_IDX):
     return src_mask, tgt_mask, src_padding_mask, tgt_padding_mask
 
 
-def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataloader, NUM_EPOCHS, PAD_IDX, torch_seed, learning_rate, log_dir, batch_size, INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX):
+def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataloader, num_epochs, PAD_IDX, torch_seed, learning_rate, log_dir, batch_size, INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX):
 
     torch.manual_seed(torch_seed)
     
@@ -60,11 +60,11 @@ def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataload
     model.train()
     losses = 0
 
-    for epoch in range(NUM_EPOCHS):
+    for epoch in range(num_epochs):
         if check_abort():
             break
    
-        for src, encoder_lengths, tgt, decoder_target, decoder_lengths in train_dataloader:
+        for src, tgt in train_dataloader:
             if check_abort():
                 break
     
@@ -94,15 +94,15 @@ def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataload
                 oldtimer = timer
                 timer = time.time()
                 
-                model.eval()
+                #model.eval()
                 
-                sentence = src[:, 0].view(-1)  # take the first sentence
-                sentence = sentence[0:encoder_lengths[0]]  # trim padding
-                sentence = decode_string(sentence, INPUT_WORD_TO_IDX) 
+                #sentence = src[:, 0].view(-1)  # take the first sentence
+                #sentence = sentence[0:encoder_lengths[0]]  # trim padding
+                #sentence = decode_string(sentence, INPUT_WORD_TO_IDX) 
 
-                gold = tgt[:, 0].view(-1)  # take the first sentence
-                gold = gold[1:decoder_lengths[0]]  # trim padding and SOS
-                gold = decode_string(gold, OUTPUT_WORD_TO_IDX)                
+                #gold = tgt[:, 0].view(-1)  # take the first sentence
+                #gold = gold[1:decoder_lengths[0]]  # trim padding and SOS
+                #gold = decode_string(gold, OUTPUT_WORD_TO_IDX)                
         
                 # to add: system
                 #sentence = src[:, 0].view(-1)
@@ -114,7 +114,7 @@ def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataload
                 #writer.add_text('sample', sentence + "<=>" + system, global_step=counter)
                 #writer.add_scalar('Loss/train', loss.item(), global_step=counter)
                 
-                model.train()
+                #model.train()
                 
     return model
 
