@@ -154,7 +154,6 @@ class HebrewWords(Dataset):
 
             input_words = text.split()
             output_words = output.replace("_", "_ _").split()
-            #output_words = re.split("_| ", output)
             
             if (len(input_words) == len(output_words)):
                 all_input_words += input_words
