@@ -153,7 +153,8 @@ class HebrewWords(Dataset):
             bo, ch, ve, output = tuple(output_verses[i].strip().split('\t'))
 
             input_words = text.split()
-            output_words = re.split("_| ", output)
+            output_words = output.replace("_", "_ _").split()
+            #output_words = re.split("_| ", output)
             
             if (len(input_words) == len(output_words)):
                 all_input_words += input_words
@@ -167,8 +168,8 @@ class HebrewWords(Dataset):
             input_seq = ' '.join([all_input_words[ind % len(all_input_words)] for ind in range(heb_word, heb_word + sequence_length)])
             output_seq = ' '.join([all_output_words[ind % len(all_output_words)] for ind in range(heb_word, heb_word + sequence_length)])
             
-            # Add if not case of ketiv-qere
-            if "*" not in input_seq:
+            # Add if not case of ketiv-qere and no cases of (parts of) composite proper nouns.
+            if "*" not in input_seq and "_" not in output_seq:
                 self.input_data.append(input_seq)
                 self.output_data.append(output_seq)
                 for char in input_seq:
