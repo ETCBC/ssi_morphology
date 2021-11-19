@@ -64,7 +64,7 @@ def evaluate_transformer_model(input_seq_len, lr, epochs, num_encoder_layers, nu
         test_len = len(evaluation_data)
         for i in range(test_len):
     
-            predicted = translate(loaded_transf, evaluation_data[i]['encoded_text'], OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX)
+            predicted = translate(loaded_transf.to(device), evaluation_data[i]['encoded_text'].to(device), OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX)
             true_val = evaluation_data[i]['output']
         
             f.write(f'Predicted {predicted}\n')

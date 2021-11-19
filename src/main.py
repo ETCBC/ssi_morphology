@@ -61,12 +61,14 @@ def main(args):
     bible = HebrewWords(input_file, output_file, args.input_seq_len)
     len_train = int(0.7 * len(bible))
     len_eval = len(bible) - len_train
- 
-    training_data, evaluation_data = random_split(
-            bible, [len_train, len_eval], generator=torch.Generator().manual_seed(42))
-            
+
     torch_seed = 42
     batch_size = 128
+
+    # random_split() in PyTorch 1.3.1 does not have a parameter 'generator'
+    # generator=torch.Generator().manual_seed(torch_seed)
+    torch.manual_seed(torch_seed)
+    training_data, evaluation_data = random_split(bible, [len_train, len_eval])
 
     src_vocab_size = len(bible.INPUT_WORD_TO_IDX)+2
     tgt_vocab_size = len(bible.OUTPUT_WORD_TO_IDX)+2
@@ -122,7 +124,7 @@ def main(args):
           encoder_optimizer=encoder_optimizer, decoder_optimizer=decoder_optimizer,
           loss_function=loss_function, log_dir=log_dir,
           inp_wo2idx=bible.INPUT_WORD_TO_IDX, outp_w2idx=bible.OUTPUT_WORD_TO_IDX,
-          max_epoch=args.epochs, torch_seed=42, learning_rate=args.learning_rate, batch_size=20
+          max_epoch=args.epochs, torch_seed=torch_seed, learning_rate=args.learning_rate, batch_size=20
           )
     
         model_name = f'seq2seq_seqlen{args.input_seq_len}_epochs{args.epochs}_rnn.pth'
