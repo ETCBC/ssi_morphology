@@ -58,9 +58,9 @@ def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataload
     counter = 0
     
     model.train()
-    losses = 0
-
+    
     for epoch in range(num_epochs):
+        losses = 0
         if check_abort():
             break
    
@@ -69,7 +69,6 @@ def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataload
                 break
     
             counter += batch_size
-            print(counter)
             src = src.to(device)
             tgt = tgt.to(device)
 
@@ -90,9 +89,11 @@ def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataload
             losses += loss.item()  
 
             # every N steps, print some diagnostics
-            if counter % 10*batch_size == 0:
+            if counter % 100*batch_size == 0:
                 oldtimer = timer
                 timer = time.time()
+                
+        print('train loss: ', losses / len(train_dataloader))
                 
                 #model.eval()
                 
