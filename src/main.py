@@ -88,13 +88,13 @@ def main(args):
         
         log_dir = f'runs/{args.i}_{args.o}/{args.l}seq_len_{torch_seed}seed_{args.lr}lr_{args.ep}epochs_{args.emb}embsize_{args.nh}nhead_{args.nel}nenclayers_{args.ndl}numdeclayers_transformer'
     
-        trained_transformer = train_transformer(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, args.ep, PAD_IDX, torch_seed, args.lr, log_dir, 
-                   batch_size, bible.INPUT_WORD_TO_IDX, bible.OUTPUT_WORD_TO_IDX)
+        #trained_transformer = train_transformer(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, args.ep, PAD_IDX, torch_seed, args.lr, log_dir, 
+        #           batch_size, bible.INPUT_WORD_TO_IDX, bible.OUTPUT_WORD_TO_IDX)
 
         model_path = './transformer_models'
         model_name = f'seq2seq_{args.l}seqlen_{torch_seed}seed_{args.lr}lr_{args.ep}epochs_{args.emb}embedsize__{args.nh}nhead_{args.nel}nenclayers_{args.ndl}numdeclayers_transformer.pth'    
 
-        torch.save(trained_transformer.state_dict(), os.path.join(model_path, model_name))    
+        #torch.save(trained_transformer.state_dict(), os.path.join(model_path, model_name))    
 
         evaluate_transformer_model(args.i, args.o, args.l, args.lr, args.ep, args.nel, 
                                    args.ndl, args.emb, args.nh,
