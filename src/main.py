@@ -53,7 +53,6 @@ def main(args):
     parser.add_argument("-bd", metavar="bidir", help="Optional: is the RNN model bidirectional or not", type=str2bool, const=True, default=False, nargs='?')
     
     args = parser.parse_args()
-    print(args)
     
     # load the dataset, and split 70/30 in test/eval
     input_file = os.path.join("../data", args.i)
