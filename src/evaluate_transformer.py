@@ -42,7 +42,7 @@ def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD:
     return "".join([OUTPUT_IDX_TO_WORD[idx] for idx in list(tgt_tokens.cpu().numpy())]).replace("SOS", "").replace("EOS", "")
     
     
-def evaluate_transformer_model(input_seq_len, lr, epochs, num_encoder_layers, num_decoder_layers, emb_size, 
+def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epochs, num_encoder_layers, num_decoder_layers, emb_size, 
                                nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim,
                                model_path, model_name, evaluation_data, OUTPUT_IDX_TO_WORD, 
                                OUTPUT_WORD_TO_IDX):
@@ -58,10 +58,15 @@ def evaluate_transformer_model(input_seq_len, lr, epochs, num_encoder_layers, nu
     correct_complete_sequence = 0
     correct_all_words = [0 for i in range(input_seq_len)]
     
+    eval_path = f'./evaluation_results_transformer/{input_file}_{output_file}'
+    isExist = os.path.exists(eval_path)
+    if not isExist: 
+        os.makedirs(eval_path)
+        
     evaluation_file_name = f'{input_seq_len}seq_len_{lr}lr_epochs{epochs}_{emb_size}embsize_{nhead}nhead_transformer'
-    with open(f'./evaluation_results_transformer/results_{evaluation_file_name}.txt', 'w') as f:
+    with open(f'{eval_path}/results_{evaluation_file_name}.txt', 'w') as f:
             
-        test_len = len(evaluation_data)
+        test_len = 10 #len(evaluation_data)
         for i in range(test_len):
     
             predicted = translate(loaded_transf.to(device), evaluation_data[i]['encoded_text'].to(device), OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX)
