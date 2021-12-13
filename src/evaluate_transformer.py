@@ -66,7 +66,7 @@ def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epoch
     evaluation_file_name = f'{input_seq_len}seq_len_{lr}lr_epochs{epochs}_{emb_size}embsize_{nhead}nhead_transformer'
     with open(f'{eval_path}/results_{evaluation_file_name}.txt', 'w') as f:
             
-        test_len = 10 #len(evaluation_data)
+        test_len = len(evaluation_data)
         for i in range(test_len):
     
             predicted = translate(loaded_transf.to(device), evaluation_data[i]['encoded_text'].to(device), OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX)

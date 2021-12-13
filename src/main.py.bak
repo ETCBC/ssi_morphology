@@ -35,7 +35,7 @@ def main(args):
     parser.add_argument("-i", metavar="input_filename", help="Please specificy the input datafile in the folder data", type=str)
     parser.add_argument("-o", metavar="output_filename", help="Please specificy the output datafile in the folder data", type=str)
     parser.add_argument("-l", metavar="input_seq_len", help="Designate the number of words in one input string", type=int)
-    parser.add_argument("-e", metavar="epochs", help="Specify the number of training epochs", type=int)
+    parser.add_argument("-ep", metavar="epochs", help="Specify the number of training epochs", type=int)
     parser.add_argument("-lr", metavar="learning_rate", help="Specify the learning rate", type=float)
     
     parser.add_argument("-m", metavar="model_type", help="Chooses type of model: 'rnn' or 'transformer'", type=str)
@@ -87,17 +87,17 @@ def main(args):
         loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
         optimizer = torch.optim.Adam(transformer.parameters(), lr=args.lr, betas=(0.9, 0.98), eps=1e-9)
         
-        log_dir = f'runs/{args.i}_{args.o}/{args.l}seq_len_{torch_seed}seed_{args.lr}lr_{args.e}epochs_{args.emb}embsize_{args.nh}nhead_{args.nel}nenclayers_{args.ndl}numdeclayers_transformer'
+        log_dir = f'runs/{args.i}_{args.o}/{args.l}seq_len_{torch_seed}seed_{args.lr}lr_{args.ep}epochs_{args.emb}embsize_{args.nh}nhead_{args.nel}nenclayers_{args.ndl}numdeclayers_transformer'
     
-        trained_transformer = train_transformer(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, args.e, PAD_IDX, torch_seed, args.lr, log_dir, 
+        trained_transformer = train_transformer(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, args.ep, PAD_IDX, torch_seed, args.lr, log_dir, 
                    batch_size, bible.INPUT_WORD_TO_IDX, bible.OUTPUT_WORD_TO_IDX)
 
         model_path = './transformer_models'
-        model_name = f'seq2seq_{args.l}seqlen_{torch_seed}seed_{args.lr}lr_{args.e}epochs_{args.emb}embedsize__{args.nh}nhead_{args.nel}nenclayers_{args.ndl}numdeclayers_transformer.pth'    
+        model_name = f'seq2seq_{args.l}seqlen_{torch_seed}seed_{args.lr}lr_{args.ep}epochs_{args.emb}embedsize__{args.nh}nhead_{args.nel}nenclayers_{args.ndl}numdeclayers_transformer.pth'    
 
         torch.save(trained_transformer.state_dict(), os.path.join(model_path, model_name))    
 
-        evaluate_transformer_model(args.i, args.o, args.l, args.lr, args.e, args.nel, 
+        evaluate_transformer_model(args.i, args.o, args.l, args.lr, args.ep, args.nel, 
                                    args.ndl, args.emb, args.nh,
                                    src_vocab_size, tgt_vocab_size, ffn_hid_dim,
                                    model_path, model_name, evaluation_data, 
@@ -124,10 +124,10 @@ def main(args):
           encoder_optimizer=encoder_optimizer, decoder_optimizer=decoder_optimizer,
           loss_function=loss_function, log_dir=log_dir,
           inp_wo2idx=bible.INPUT_WORD_TO_IDX, outp_w2idx=bible.OUTPUT_WORD_TO_IDX,
-          max_epoch=args.e, torch_seed=torch_seed, learning_rate=args.lr, batch_size=20
+          max_epoch=args.ep, torch_seed=torch_seed, learning_rate=args.lr, batch_size=20
           )
     
-        model_name = f'seq2seq_seqlen{args.l}_epochs{args.e}_rnn.pth'
+        model_name = f'seq2seq_seqlen{args.l}_epochs{args.ep}_rnn.pth'
 
 
 if __name__ == '__main__':
