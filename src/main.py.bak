@@ -53,7 +53,6 @@ def main(args):
     parser.add_argument("-bd", metavar="bidir", help="Optional: is the RNN model bidirectional or not", type=str2bool, const=True, default=False, nargs='?')
     
     args = parser.parse_args()
-    print(args)
     
     # load the dataset, and split 70/30 in test/eval
     input_file = os.path.join("../data", args.i)
@@ -73,14 +72,13 @@ def main(args):
     src_vocab_size = len(bible.INPUT_WORD_TO_IDX)+2
     tgt_vocab_size = len(bible.OUTPUT_WORD_TO_IDX)+2
     PAD_IDX = bible.INPUT_WORD_TO_IDX['PAD']
- 
-    
+   
     if args.m == 'transformer':
     
         ffn_hid_dim = 512
         train_dataloader = DataLoader(training_data, batch_size=batch_size, collate_fn=collate_transformer_fn)
         eval_dataloader = DataLoader(evaluation_data, batch_size=50, shuffle=False, collate_fn=collate_transformer_fn)
-        
+
         transformer = initialize_transformer_model(args.nel, args.ndl, 
                                                    args.emb, args.nh, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
                                          
@@ -89,19 +87,20 @@ def main(args):
         
         log_dir = f'runs/{args.i}_{args.o}/{args.l}seq_len_{torch_seed}seed_{args.lr}lr_{args.ep}epochs_{args.emb}embsize_{args.nh}nhead_{args.nel}nenclayers_{args.ndl}numdeclayers_transformer'
     
+        # train Hebrew
         trained_transformer = train_transformer(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, args.ep, PAD_IDX, torch_seed, args.lr, log_dir, 
                    batch_size, bible.INPUT_WORD_TO_IDX, bible.OUTPUT_WORD_TO_IDX)
 
         model_path = './transformer_models'
         model_name = f'seq2seq_{args.l}seqlen_{torch_seed}seed_{args.lr}lr_{args.ep}epochs_{args.emb}embedsize__{args.nh}nhead_{args.nel}nenclayers_{args.ndl}numdeclayers_transformer.pth'    
 
-        torch.save(trained_transformer.state_dict(), os.path.join(model_path, model_name))    
+        torch.save(trained_transformer_s.state_dict(), os.path.join(model_path, model_name))    
 
         evaluate_transformer_model(args.i, args.o, args.l, args.lr, args.ep, args.nel, 
                                    args.ndl, args.emb, args.nh,
-                                   src_vocab_size, tgt_vocab_size, ffn_hid_dim,
-                                   model_path, model_name, evaluation_data, 
-                                   bible.OUTPUT_IDX_TO_WORD, bible.OUTPUT_WORD_TO_IDX)
+                                   src_vocab_size_s, tgt_vocab_size_s, ffn_hid_dim,
+                                   model_path, model_name, evaluation_data_s, 
+                                   bible_s.OUTPUT_IDX_TO_WORD, bible_s.OUTPUT_WORD_TO_IDX)
                                                               
     elif args.m == 'rnn':
     

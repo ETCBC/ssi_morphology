@@ -72,14 +72,13 @@ def main(args):
     src_vocab_size = len(bible.INPUT_WORD_TO_IDX)+2
     tgt_vocab_size = len(bible.OUTPUT_WORD_TO_IDX)+2
     PAD_IDX = bible.INPUT_WORD_TO_IDX['PAD']
- 
-    
+   
     if args.m == 'transformer':
     
         ffn_hid_dim = 512
         train_dataloader = DataLoader(training_data, batch_size=batch_size, collate_fn=collate_transformer_fn)
         eval_dataloader = DataLoader(evaluation_data, batch_size=50, shuffle=False, collate_fn=collate_transformer_fn)
-        
+
         transformer = initialize_transformer_model(args.nel, args.ndl, 
                                                    args.emb, args.nh, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
                                          
@@ -88,6 +87,7 @@ def main(args):
         
         log_dir = f'runs/{args.i}_{args.o}/{args.l}seq_len_{torch_seed}seed_{args.lr}lr_{args.ep}epochs_{args.emb}embsize_{args.nh}nhead_{args.nel}nenclayers_{args.ndl}numdeclayers_transformer'
     
+        # train Hebrew
         trained_transformer = train_transformer(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, args.ep, PAD_IDX, torch_seed, args.lr, log_dir, 
                    batch_size, bible.INPUT_WORD_TO_IDX, bible.OUTPUT_WORD_TO_IDX)
 

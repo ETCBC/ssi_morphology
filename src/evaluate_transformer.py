@@ -12,7 +12,7 @@ def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_sym
 
     memory = model.encode(src, src_mask)
     ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device)
-    for i in range(max_len-1):
+    for i in range(max_len-1+20):
         memory = memory.to(device)
         tgt_mask = (generate_square_subsequent_mask(ys.size(0))
                     .type(torch.bool)).to(device)
@@ -78,8 +78,8 @@ def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epoch
             predicted_words = predicted.split()
             true_val_words = true_val.split()
             
-            if len(predicted_words) != input_seq_len:
-                continue
+            #if len(predicted_words) != input_seq_len:
+            #    continue
             
             if predicted == true_val:
                 correct_complete_sequence += 1
