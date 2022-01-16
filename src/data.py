@@ -21,6 +21,8 @@ Dataset wrappers:
 """
 import collections
 import re
+
+from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
@@ -102,7 +104,7 @@ class HebrewWords(Dataset):
     """A Pytorch wrapper around the hebrew bible text. Processed per word."""
 
     def __init__(self, input_filename: str, output_filename: str, 
-                 sequence_length: int, transform=None):
+                 sequence_length: int, test_size: float, transform=None):
         """
         Args:
             input_filename (str)
@@ -122,6 +124,7 @@ class HebrewWords(Dataset):
             encoded_text: Tensor
             encoded_output: Tensor
         """
+       
         with open(input_filename, 'r') as f:
             input_verses = f.readlines()
 
@@ -144,9 +147,12 @@ class HebrewWords(Dataset):
 
         self.input_data = []
         self.output_data = []
+        
+        all_input_words = collections.defaultdict(list)
+        all_output_words = collections.defaultdict(list)
 
-        all_input_words = []
-        all_output_words = []
+        seq_len_verses_input = []
+        seq_len_verses_output = []
 
         for i in range(len(input_verses)):
             bo, ch, ve, text = tuple(input_verses[i].strip().split('\t'))
@@ -156,27 +162,76 @@ class HebrewWords(Dataset):
             output_words = output.replace("_", "_ _").split()
             
             if (len(input_words) == len(output_words)):
-                all_input_words += input_words
-                all_output_words += output_words
+                #all_input_words += input_words
+                #all_output_words += output_words
+                seq_len_verses_input.append(input_words)
+                seq_len_verses_output.append(output_words)
+                if len(seq_len_verses_input) % sequence_length == 0:
+                    all_input_words[bo].append(seq_len_verses_input)
+                    all_output_words[bo].append(seq_len_verses_output)
+                    seq_len_verses_input = []
+                    seq_len_verses_output = []
+                    
             else:
                 print(f"Encoding issue with {bo} {ch} {ve} : mismatch in number of words")
                 print(input_words)
                 print(output_words)
-
-        for heb_word in range(len(all_input_words)+1):
-            input_seq = ' '.join([all_input_words[ind % len(all_input_words)] for ind in range(heb_word, heb_word + sequence_length)])
-            output_seq = ' '.join([all_output_words[ind % len(all_output_words)] for ind in range(heb_word, heb_word + sequence_length)])
+        if len(seq_len_verses_input) > 0:
+            all_input_words[bo][-1].append(seq_len_verses_input)
+            all_output_words[bo][-1].append(seq_len_verses_output)
             
-            # Add if not case of ketiv-qere and no cases of (parts of) composite proper nouns.
-            if "*" not in input_seq and "_" not in output_seq:
-                self.input_data.append(input_seq)
-                self.output_data.append(output_seq)
-                for char in input_seq:
-                    if char not in self.INPUT_WORD_TO_IDX:
-                        self.INPUT_WORD_TO_IDX[char] = len(self.INPUT_WORD_TO_IDX)
-                for char in output_seq:
-                    if char not in self.OUTPUT_WORD_TO_IDX:
-                        self.OUTPUT_WORD_TO_IDX[char] = len(self.OUTPUT_WORD_TO_IDX)
+        for bo, w_list in all_input_words.items():
+            flat_w_list = [word for sublist in w_list for word in sublist]
+            all_input_words[bo] = flat_w_list
+        for bo, w_list in all_output_words.items():
+            flat_w_list = [word for sublist in w_list for word in sublist]
+            all_output_words[bo] = flat_w_list
+            
+        all_input_seq_lists = []
+        all_output_seq_lists = []
+        
+        for bo in all_input_words.keys():
+            for word_list_input, word_list_output in zip(all_input_words[bo], all_output_words[bo]):
+                input_seq_list = []
+                output_seq_list = []
+                for word_idx in range(len(word_list_input)-sequence_length+1):
+                    input_seq = ' '.join(word_list_input[word_idx:word_idx+sequence_length])
+                    output_seq = ' '.join(word_list_output[word_idx:word_idx+sequence_length])
+                    if "*" not in input_seq and "_" not in output_seq:
+                        input_seq_list.append(input_seq)
+                        output_seq_list.append(output_seq)
+                        for char in input_seq:
+                            if char not in self.INPUT_WORD_TO_IDX:
+                                self.INPUT_WORD_TO_IDX[char] = len(self.INPUT_WORD_TO_IDX)
+                        for char in output_seq:
+                            if char not in self.OUTPUT_WORD_TO_IDX:
+                                self.OUTPUT_WORD_TO_IDX[char] = len(self.OUTPUT_WORD_TO_IDX)
+                if len(input_seq_list) > 0:
+                    all_input_seq_lists.append(input_seq_list)
+                    all_output_seq_lists.append(output_seq_list)
+                    
+        X_train, X_val_test, y_train, y_val_test = train_test_split(all_input_seq_lists, all_output_seq_lists, test_size=test_size, random_state=42)
+        X_val, X_test, y_val, y_test = train_test_split(X_val_test, y_val_test, test_size=0.5, random_state=11)
+        
+        for data_list in X_train:
+            for sequence in data_list:
+                self.input_data.append(sequence)   
+        for data_list in X_val:
+            for sequence in data_list:
+                self.input_data.append(sequence)                
+        for data_list in X_test:
+            for sequence in data_list:
+                self.input_data.append(sequence)
+                
+        for data_list in y_train:
+            for sequence in data_list:
+                self.output_data.append(sequence)
+        for data_list in y_val:
+            for sequence in data_list:
+                self.output_data.append(sequence)
+        for data_list in y_test:
+            for sequence in data_list:
+                self.output_data.append(sequence)        
          
         self.OUTPUT_IDX_TO_WORD = {idx: char for char, idx in self.OUTPUT_WORD_TO_IDX.items()}
 
@@ -191,6 +246,7 @@ class HebrewWords(Dataset):
 
         # data properties from the intput
         text = self.input_data[idx]
+    
         sample = {
                 "text": text,
                 "encoded_text": encode_string(text, self.INPUT_WORD_TO_IDX, add_sos=False, add_eos=True)

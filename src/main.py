@@ -10,7 +10,8 @@ from config import check_abort, abort_handler, device
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import random_split, DataLoader
+from torch.utils.data import random_split, DataLoader, Subset
+from torch.utils.data.sampler import SubsetRandomSampler
 
 from data import HebrewWords, collate_fn, collate_transformer_fn, str2bool
 from model_transformer import Seq2SeqTransformer
@@ -54,21 +55,20 @@ def main(args):
     
     args = parser.parse_args()
     
-    # load the dataset, and split 70/30 in test/eval
+    test_size = 0.3
+    
+    # load the dataset, and split 70/15/15 in train/val/test
     input_file = os.path.join("../data", args.i)
     output_file = os.path.join("../data", args.o)
-    bible = HebrewWords(input_file, output_file, args.l)
-    len_train = int(0.7 * len(bible))
-    len_eval = len(bible) - len_train
+    bible = HebrewWords(input_file, output_file, args.l, test_size)
+    len_train = int((1-test_size) * len(bible))
 
     torch_seed = 42
     batch_size = 128
 
     # random_split() in PyTorch 1.3.1 does not have a parameter 'generator'
-    # generator=torch.Generator().manual_seed(torch_seed)
     torch.manual_seed(torch_seed)
-    training_data, evaluation_data = random_split(bible, [len_train, len_eval])
-
+    
     src_vocab_size = len(bible.INPUT_WORD_TO_IDX)+2
     tgt_vocab_size = len(bible.OUTPUT_WORD_TO_IDX)+2
     PAD_IDX = bible.INPUT_WORD_TO_IDX['PAD']
@@ -76,9 +76,21 @@ def main(args):
     if args.m == 'transformer':
     
         ffn_hid_dim = 512
-        train_dataloader = DataLoader(training_data, batch_size=batch_size, collate_fn=collate_transformer_fn)
-        eval_dataloader = DataLoader(evaluation_data, batch_size=50, shuffle=False, collate_fn=collate_transformer_fn)
-
+        
+        indices = list(range(len(bible)))
+        
+        upper_val_index = int((1 - 0.5*test_size) * len(bible))
+        train_indices, val_indices, test_indices = indices[:len_train], indices[len_train:upper_val_index], indices[upper_val_index:]
+        
+        bible_train = Subset(bible, train_indices)
+        bible_eval = Subset(bible, val_indices)
+        bible_test = Subset(bible, test_indices)
+        
+        print(len(bible_train), len(bible_eval), len(bible_test))
+        
+        train_dataloader = DataLoader(bible_train, batch_size=batch_size, collate_fn=collate_transformer_fn)
+        eval_dataloader = DataLoader(bible_eval, batch_size=50, shuffle=False, collate_fn=collate_transformer_fn)
+        
         transformer = initialize_transformer_model(args.nel, args.ndl, 
                                                    args.emb, args.nh, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
                                          
@@ -87,7 +99,6 @@ def main(args):
         
         log_dir = f'runs/{args.i}_{args.o}/{args.l}seq_len_{torch_seed}seed_{args.lr}lr_{args.ep}epochs_{args.emb}embsize_{args.nh}nhead_{args.nel}nenclayers_{args.ndl}numdeclayers_transformer'
     
-        # train Hebrew
         trained_transformer = train_transformer(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, args.ep, PAD_IDX, torch_seed, args.lr, log_dir, 
                    batch_size, bible.INPUT_WORD_TO_IDX, bible.OUTPUT_WORD_TO_IDX)
 
@@ -95,11 +106,11 @@ def main(args):
         model_name = f'seq2seq_{args.l}seqlen_{torch_seed}seed_{args.lr}lr_{args.ep}epochs_{args.emb}embedsize__{args.nh}nhead_{args.nel}nenclayers_{args.ndl}numdeclayers_transformer.pth'    
 
         torch.save(trained_transformer.state_dict(), os.path.join(model_path, model_name))    
-
+        
         evaluate_transformer_model(args.i, args.o, args.l, args.lr, args.ep, args.nel, 
                                    args.ndl, args.emb, args.nh,
-                                   src_vocab_size, tgt_vocab_size, ffn_hid_dim,
-                                   model_path, model_name, evaluation_data, 
+                                  src_vocab_size, tgt_vocab_size, ffn_hid_dim,
+                                   model_path, model_name, bible_test, 
                                    bible.OUTPUT_IDX_TO_WORD, bible.OUTPUT_WORD_TO_IDX)
                                                               
     elif args.m == 'rnn':
