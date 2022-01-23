@@ -11,10 +11,10 @@ from model_transformer import Seq2SeqTransformer
 
 from config import check_abort, abort_handler
 
-def initialize_transformer_model(num_encoder_layers, num_decoder_layers, emb_size, nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim):
+def initialize_transformer_model(num_encoder_layers, num_decoder_layers, emb_size, nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim, dropout):
 
     transformer = Seq2SeqTransformer(num_encoder_layers, num_decoder_layers, emb_size, 
-                                 nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
+                                 nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim, dropout)
 
     for p in transformer.parameters():
         if p.dim() > 1:

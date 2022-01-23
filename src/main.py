@@ -15,7 +15,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 
 from data import HebrewWords, collate_fn, collate_transformer_fn, str2bool
 from model_transformer import Seq2SeqTransformer
-from model_rnn import HebrewEncoder, HebrewDecoder, save_encoder_decoder #, reshape_hidden
+from model_rnn import HebrewEncoder, HebrewDecoder, save_encoder_decoder
 from transformer_train_fns import initialize_transformer_model, train_transformer, evaluate
 from rnn_train_fns import train_rnn
 from evaluate_transformer import greedy_decode, translate, evaluate_transformer_model
@@ -46,7 +46,8 @@ def main(args):
     parser.add_argument("-nh", metavar="nhead", help="Optional: Number of heads", type=int, default=8, nargs='?')
     parser.add_argument("-nel", metavar="num_encoder_layers", help="Optional: Number of layers in encoder", type=int, default=3, nargs='?')
     parser.add_argument("-ndl", metavar="num_decoder_layers", help="Optional: Number of layers in decoder", type=int, default=3, nargs='?')
-    
+    parser.add_argument("-dr", metavar="dropout", help="Optional: dropout in transformer model", type=float, default=0.1, nargs='?')
+    parser.add_argument("-b", metavar="batch_size", help="Optional: batch size during training", type=int, default=128, nargs='?')
     
     # Hyperparameters of the RNN model.
     parser.add_argument("-hd", metavar="hidden_dim", help="Optional: Number of cells in RNN layer", type=int, nargs='?')
@@ -55,6 +56,7 @@ def main(args):
     
     args = parser.parse_args()
     
+    batch_size = args.b
     test_size = 0.3
     
     # load the dataset, and split 70/15/15 in train/val/test
@@ -64,7 +66,6 @@ def main(args):
     len_train = int((1-test_size) * len(bible))
 
     torch_seed = 42
-    batch_size = 128
 
     # random_split() in PyTorch 1.3.1 does not have a parameter 'generator'
     torch.manual_seed(torch_seed)
@@ -86,13 +87,11 @@ def main(args):
         bible_eval = Subset(bible, val_indices)
         bible_test = Subset(bible, test_indices)
         
-        print(len(bible_train), len(bible_eval), len(bible_test))
-        
         train_dataloader = DataLoader(bible_train, batch_size=batch_size, collate_fn=collate_transformer_fn)
         eval_dataloader = DataLoader(bible_eval, batch_size=50, shuffle=False, collate_fn=collate_transformer_fn)
         
         transformer = initialize_transformer_model(args.nel, args.ndl, 
-                                                   args.emb, args.nh, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
+                                                   args.emb, args.nh, src_vocab_size, tgt_vocab_size, ffn_hid_dim, args.dr)
                                          
         loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
         optimizer = torch.optim.Adam(transformer.parameters(), lr=args.lr, betas=(0.9, 0.98), eps=1e-9)
