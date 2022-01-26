@@ -109,7 +109,7 @@ def main(args):
         evaluate_transformer_model(args.i, args.o, args.l, args.lr, args.ep, args.nel, 
                                    args.ndl, args.emb, args.nh,
                                   src_vocab_size, tgt_vocab_size, ffn_hid_dim,
-                                   model_path, model_name, bible_test, 
+                                   model_path, model_name, bible_test, args.dr, batch_size,
                                    bible.OUTPUT_IDX_TO_WORD, bible.OUTPUT_WORD_TO_IDX)
                                                               
     elif args.m == 'rnn':

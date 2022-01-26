@@ -87,8 +87,6 @@ def main(args):
         bible_eval = Subset(bible, val_indices)
         bible_test = Subset(bible, test_indices)
         
-        print(len(bible_train), len(bible_eval), len(bible_test))
-        
         train_dataloader = DataLoader(bible_train, batch_size=batch_size, collate_fn=collate_transformer_fn)
         eval_dataloader = DataLoader(bible_eval, batch_size=50, shuffle=False, collate_fn=collate_transformer_fn)
         
