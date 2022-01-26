@@ -44,8 +44,8 @@ def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD:
     
 def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epochs, num_encoder_layers, num_decoder_layers, emb_size, 
                                nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim,
-                               model_path, model_name, evaluation_data, OUTPUT_IDX_TO_WORD, 
-                               OUTPUT_WORD_TO_IDX):
+                               model_path, model_name, evaluation_data, dropout, batch_size,
+                               OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX):
 
     loaded_transf = Seq2SeqTransformer(num_encoder_layers, num_decoder_layers, emb_size, 
                                        nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
@@ -63,7 +63,7 @@ def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epoch
     if not isExist: 
         os.makedirs(eval_path)
         
-    evaluation_file_name = f'{input_seq_len}seq_len_{lr}lr_epochs{epochs}_{emb_size}embsize_{nhead}nhead_transformer'
+    evaluation_file_name = f'{input_seq_len}seq_len_{lr}lr_epochs{epochs}_{emb_size}embsize_{nhead}nhead_transformer_{dropout}dropout_{batch_size}batchsize'
     with open(f'{eval_path}/results_{evaluation_file_name}.txt', 'w') as f:
             
         test_len = len(evaluation_data)
@@ -96,4 +96,4 @@ def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epoch
                     continue
         f.write('\n')
         f.write(f'Correct complete strings {correct_complete_sequence / test_len}\n')
-        f.write(f'Correct distinct words {[correct_count / test_len for correct_count in correct_all_words]}')
+        f.write(f'Correct distinct words {[correct_count / test_len for correct_count in correct_all_words]}\n')
