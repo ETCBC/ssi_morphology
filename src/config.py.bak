@@ -11,8 +11,6 @@ check_abort      Returns true if the user wants to abort training
 """
 import torch
 
-MAX_LENGTH = 25
-
 # characters that are mutated in preprocessing of strings
 MC_PREFIXES = ['!', ']', '@']
 

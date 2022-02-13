@@ -58,7 +58,7 @@ def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epoch
     correct_complete_sequence = 0
     correct_all_words = [0 for i in range(input_seq_len)]
     
-    eval_path = f'./evaluation_results_transformer/new_preprocessing_heb_syr_mixed_{input_file}_{output_file}'
+    eval_path = f'./evaluation_results_transformer/new_preprocessing_{input_file}_{output_file}'
     isExist = os.path.exists(eval_path)
     if not isExist: 
         os.makedirs(eval_path)
@@ -77,9 +77,6 @@ def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epoch
 
             predicted_words = predicted.split()
             true_val_words = true_val.split()
-            
-            #if len(predicted_words) != input_seq_len:
-            #    continue
             
             if predicted == true_val:
                 correct_complete_sequence += 1
