@@ -7,7 +7,8 @@ from torch.nn.utils.rnn import pad_packed_sequence
 
 from config import device, check_abort
 from data import decode_string
-from config import EOS_token, MAX_LENGTH
+from data import EOS_token
+from data import MAX_LENGTH
 
 
 def score(encoder, decoder, dataset, OUTPUT_WORD_TO_IDX, max_length=MAX_LENGTH):
