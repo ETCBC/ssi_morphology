@@ -43,6 +43,98 @@ def create_mask(src, tgt, PAD_IDX):
     return src_mask, tgt_mask, src_padding_mask, tgt_padding_mask
 
 
+class TrainingSession():
+   def __init__(self, model, loss_function):
+      self.model = model
+      self.loss_function = loss_function
+      self.n_epochs = 1
+      self.optimizer = None
+      self.trainloader = None
+      self.validloader = None
+      self.PAD_IDX = None
+
+
+from Levenshtein import distance
+
+def edit_distance(t1, t2):
+    o = ord(' ')
+    s1 = ''.join([chr(o + i) for i in t1])
+    s2 = ''.join([chr(o + i) for i in t2])
+    return distance(s1, s2)
+
+from numpy import array
+
+def accuracy(target, labels):
+    tgt_out = labels[1:, :]
+    values, predictions = torch.max(target, -1)
+    wrong = 0
+    for i in range(len(tgt_out)):
+        wrong += edit_distance(tgt_out[i], predictions[i])
+    return 1 - (wrong / array(tgt_out.size()).prod()).item()
+
+
+def criterion(f, target, labels):
+   tgt_out = labels[1:, :]
+   return f(target.reshape(-1, target.shape[-1]), tgt_out.reshape(-1))
+
+
+def run_model(session, src, tgt):
+   tgt_input = tgt[:-1, :]
+   src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = \
+      create_mask(src, tgt_input, session.PAD_IDX)
+   return session.model(src, tgt_input, src_mask, tgt_mask,
+      src_padding_mask, tgt_padding_mask, src_padding_mask)
+
+
+def train_step(session):
+   train_loss = 0.0
+   train_accy = 0.0
+   n = 0
+   for src, tgt in session.trainloader:
+      src = src.to(device)
+      tgt = tgt.to(device)
+      session.optimizer.zero_grad()
+      target = run_model(session, src, tgt)
+      loss = criterion(session.loss_function, target, tgt)
+      loss.backward()
+      session.optimizer.step()
+      delta = len(src)
+      train_loss += loss.item() * delta
+      train_accy += accuracy(target, tgt) * delta
+      n += delta
+   return train_loss / n, train_accy / n
+
+
+def valid_step(session):
+   valid_loss = 0.0
+   valid_accy = 0.0
+   n = 0
+   for src, tgt in session.validloader:
+      src = src.to(device)
+      tgt = tgt.to(device)
+      target = run_model(session, src, tgt)
+      loss = criterion(session.loss_function, target, tgt)
+      delta = len(src)
+      valid_loss += loss.item() * delta
+      valid_accy += accuracy(target, tgt) * delta
+      n += delta
+   return valid_loss / n, valid_accy / n
+
+
+def run_training(session):
+   print('Epoch', 'Training loss', 'Training accuracy',
+                'Validation loss', 'Validation accuracy', sep='\t')
+   for epoch in range(session.n_epochs):
+      if check_abort():
+         break
+      session.model.train()
+      train_loss, train_accy = train_step(session)
+      session.model.eval()
+      valid_loss, valid_accy = valid_step(session)
+      print(epoch+1, train_loss, train_accy,
+                     valid_loss, valid_accy, sep='\t')
+
+
 def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataloader, num_epochs, PAD_IDX, torch_seed, learning_rate, log_dir, batch_size, INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX):
 
     torch.manual_seed(torch_seed)
@@ -52,71 +144,14 @@ def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataload
     
     # tensorboard
     writer = SummaryWriter(log_dir)
-    
-    timer_start = time.time()
-    timer = timer_start
-    counter = 0
-    
-    model.train()
-    
-    for epoch in range(num_epochs):
-        losses = 0
-        if check_abort():
-            break
-   
-        for src, tgt in train_dataloader:
-            if check_abort():
-                break
-    
-            counter += batch_size
-            src = src.to(device)
-            tgt = tgt.to(device)
 
-            tgt_input = tgt[:-1, :]
-
-            src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input, PAD_IDX)
-
-            logits = model(src, tgt_input, src_mask, tgt_mask, src_padding_mask, tgt_padding_mask, src_padding_mask)
-
-            optimizer.zero_grad()
-
-            tgt_out = tgt[1:, :]
-            loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
-            
-            loss.backward()
-
-            optimizer.step()
-            losses += loss.item()  
-
-            # every N steps, print some diagnostics
-            if counter % 100*batch_size == 0:
-                oldtimer = timer
-                timer = time.time()
-                
-        print('train loss: ', losses / len(train_dataloader))
-                
-                #model.eval()
-                
-                #sentence = src[:, 0].view(-1)  # take the first sentence
-                #sentence = sentence[0:encoder_lengths[0]]  # trim padding
-                #sentence = decode_string(sentence, INPUT_WORD_TO_IDX) 
-
-                #gold = tgt[:, 0].view(-1)  # take the first sentence
-                #gold = gold[1:decoder_lengths[0]]  # trim padding and SOS
-                #gold = decode_string(gold, OUTPUT_WORD_TO_IDX)                
-        
-                # to add: system
-                #sentence = src[:, 0].view(-1)
-                #print(sentence)
-                
-                #print(f'step={counter} epoch={epoch} t={timer - timer_start} dt={timer - oldtimer} batchloss={loss.item()}')
-                
-                #print(f'\tverse: {sentence}\tgold: {gold}\t') # system: {system}')
-                #writer.add_text('sample', sentence + "<=>" + system, global_step=counter)
-                #writer.add_scalar('Loss/train', loss.item(), global_step=counter)
-                
-                #model.train()
-                
+    session = TrainingSession(model, loss_fn)
+    session.n_epochs = num_epochs
+    session.optimizer = optimizer
+    session.trainloader = train_dataloader
+    session.validloader = eval_dataloader
+    session.PAD_IDX = PAD_IDX
+    run_training(session)
     return model
 
     

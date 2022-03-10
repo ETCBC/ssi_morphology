@@ -58,7 +58,7 @@ def main(args):
     
     batch_size = args.b
     test_size = 0.3
-    
+
     # load the dataset, and split 70/15/15 in train/val/test
     input_file = os.path.join("../data", args.i)
     output_file = os.path.join("../data", args.o)
@@ -84,8 +84,11 @@ def main(args):
         train_indices, val_indices, test_indices = indices[:len_train], indices[len_train:upper_val_index], indices[upper_val_index:]
         
         bible_train = Subset(bible, train_indices)
+        print('Training set size:', len(train_indices))
         bible_eval = Subset(bible, val_indices)
+        print('Validation set size:', len(val_indices))
         bible_test = Subset(bible, test_indices)
+        print('Test set size:', len(test_indices))
         
         train_dataloader = DataLoader(bible_train, batch_size=batch_size, collate_fn=collate_transformer_fn)
         eval_dataloader = DataLoader(bible_eval, batch_size=50, shuffle=False, collate_fn=collate_transformer_fn)

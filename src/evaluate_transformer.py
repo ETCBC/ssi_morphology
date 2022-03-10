@@ -63,7 +63,7 @@ def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epoch
     if not isExist: 
         os.makedirs(eval_path)
         
-    evaluation_file_name = f'{input_seq_len}seq_len_{lr}lr_epochs{epochs}_{emb_size}embsize_{nhead}nhead_transformer_{dropout}dropout_{batch_size}batchsize'
+    evaluation_file_name = f'{input_seq_len}seq_len_{lr}lr_epochs{epochs}_{emb_size}embsize_{nhead}nhead_{num_encoder_layers}nel_{num_decoder_layers}ndl_transformer_{dropout}dropout_{batch_size}batchsize'
     with open(f'{eval_path}/results_{evaluation_file_name}.txt', 'w') as f:
             
         test_len = len(evaluation_data)
