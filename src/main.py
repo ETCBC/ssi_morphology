@@ -121,6 +121,7 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
         
         # Hebrew and Syriac together
         if not args.ep2:
+            training_type = 'two_datasets_simultaneously'
             # Merge and shuffle Hebrew and Syriac data.
             data_merger_train = DataMerger(hebrew_data.X_train, syriac_data.X_train, hebrew_data.y_train, syriac_data.y_train)
             train_data_X, train_data_y = data_merger_train.merge_data()
@@ -138,6 +139,7 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
 
         # First Hebrew, then Syriac
         else:
+            training_type = 'two_datasets_sequential'
             # Make Pytorch datasets
             bible_train = HebrewWords(hebrew_data.X_train, hebrew_data.y_train, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
             bible_val = HebrewWords(hebrew_data.X_val, hebrew_data.y_val, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
@@ -148,6 +150,7 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
     
     # Only Hebrew data
     else:
+        training_type = 'one_dataset'
         hebrew_data.INPUT_IDX_TO_WORD = {v:k for k,v in hebrew_data.INPUT_WORD_TO_IDX.items()}
         hebrew_data.OUTPUT_IDX_TO_WORD = {v:k for k,v in hebrew_data.OUTPUT_WORD_TO_IDX.items()}
         # Make Pytorch datasets
@@ -208,7 +211,7 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
                                    src_vocab_size, tgt_vocab_size, ffn_hid_dim,
                                    model_path, model_name, bible_test, args.dr, batch_size,
                                    syriac_data.OUTPUT_IDX_TO_WORD, syriac_data.OUTPUT_WORD_TO_IDX,
-                                   input2=args.i2, output2=args.o2, epochs2=args.ep2)
+                                   input2=args.i2, output2=args.o2, epochs2=args.ep2, training_type=training_type)
 
         else:
             model_path = './transformer_models'
