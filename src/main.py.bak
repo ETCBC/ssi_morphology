@@ -134,7 +134,7 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
             bible_train = HebrewWords(train_data_X, train_data_y, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
             bible_val = HebrewWords(val_data_X, val_data_y, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
             # Test data contain Syriac sequences only.
-            bible_test_s = HebrewWords(syriac_data.X_test, syriac_data.y_test, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
+            bible_test = HebrewWords(syriac_data.X_test, syriac_data.y_test, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
 
         # First Hebrew, then Syriac
         else:
@@ -144,7 +144,7 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
             bible_train_s = HebrewWords(syriac_data.X_train, syriac_data.y_train, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
             bible_val_s = HebrewWords(syriac_data.X_val, syriac_data.y_val, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
             # Test data contain Syriac sequences only.
-            bible_test_s = HebrewWords(syriac_data.X_test, syriac_data.y_test, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
+            bible_test = HebrewWords(syriac_data.X_test, syriac_data.y_test, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
     
     # Only Hebrew data
     else:
@@ -153,7 +153,7 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
         # Make Pytorch datasets
         bible_train = HebrewWords(hebrew_data.X_train, hebrew_data.y_train, hebrew_data.INPUT_WORD_TO_IDX, hebrew_data.OUTPUT_WORD_TO_IDX)
         bible_val = HebrewWords(hebrew_data.X_val, hebrew_data.y_val, hebrew_data.INPUT_WORD_TO_IDX, hebrew_data.OUTPUT_WORD_TO_IDX)
-        bible_test_h = HebrewWords(hebrew_data.X_test, hebrew_data.y_test, hebrew_data.INPUT_WORD_TO_IDX, hebrew_data.OUTPUT_WORD_TO_IDX)
+        bible_test = HebrewWords(hebrew_data.X_test, hebrew_data.y_test, hebrew_data.INPUT_WORD_TO_IDX, hebrew_data.OUTPUT_WORD_TO_IDX)
         
     src_vocab_size = len(hebrew_data.INPUT_WORD_TO_IDX)+2
     tgt_vocab_size = len(hebrew_data.OUTPUT_WORD_TO_IDX)+2
@@ -206,7 +206,7 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
             evaluate_transformer_model(args.i, args.o, args.l, args.lr, args.ep, args.nel, 
                                    args.ndl, args.emb, args.nh,
                                    src_vocab_size, tgt_vocab_size, ffn_hid_dim,
-                                   model_path, model_name, bible_test_s, args.dr, batch_size,
+                                   model_path, model_name, bible_test, args.dr, batch_size,
                                    syriac_data.OUTPUT_IDX_TO_WORD, syriac_data.OUTPUT_WORD_TO_IDX,
                                    input2=args.i2, output2=args.o2, epochs2=args.ep2)
 
@@ -219,7 +219,7 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
             evaluate_transformer_model(args.i, args.o, args.l, args.lr, args.ep, args.nel, 
                                    args.ndl, args.emb, args.nh,
                                    src_vocab_size, tgt_vocab_size, ffn_hid_dim,
-                                   model_path, model_name, bible_test_s, args.dr, batch_size,
+                                   model_path, model_name, bible_test, args.dr, batch_size,
                                    hebrew_data.OUTPUT_IDX_TO_WORD, hebrew_data.OUTPUT_WORD_TO_IDX)
                                                               
     elif args.m == 'rnn':
