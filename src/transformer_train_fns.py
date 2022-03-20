@@ -153,83 +153,6 @@ def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataload
     run_training(session)
     return model
 
-
-# def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataloader, num_epochs, PAD_IDX, torch_seed, learning_rate, log_dir, batch_size, INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX):
-
-    # torch.manual_seed(torch_seed)
-    
-    # # Tell Python to run the abort_handler() function when SIGINT is recieved
-    # signal(SIGINT, abort_handler)
-    
-    # # tensorboard
-    # writer = SummaryWriter(log_dir)
-    
-    # timer_start = time.time()
-    # timer = timer_start
-    # counter = 0
-    
-    # model.train()
-    
-    # for epoch in range(num_epochs):
-        # losses = 0
-        # if check_abort():
-            # break
-   
-        # for src, tgt in train_dataloader:
-            # if check_abort():
-                # break
-    
-            # counter += batch_size
-            # src = src.to(device)
-            # tgt = tgt.to(device)
-
-            # tgt_input = tgt[:-1, :]
-
-            # src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input, PAD_IDX)
-
-            # logits = model(src, tgt_input, src_mask, tgt_mask, src_padding_mask, tgt_padding_mask, src_padding_mask)
-
-            # optimizer.zero_grad()
-
-            # tgt_out = tgt[1:, :]
-            # loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
-            
-            # loss.backward()
-
-            # optimizer.step()
-            # losses += loss.item()  
-
-            # # every N steps, print some diagnostics
-            # if counter % 100*batch_size == 0:
-                # oldtimer = timer
-                # timer = time.time()
-                
-        # print('train loss: ', losses / len(train_dataloader))
-                
-                #model.eval()
-                
-                #sentence = src[:, 0].view(-1)  # take the first sentence
-                #sentence = sentence[0:encoder_lengths[0]]  # trim padding
-                #sentence = decode_string(sentence, INPUT_WORD_TO_IDX) 
-
-                #gold = tgt[:, 0].view(-1)  # take the first sentence
-                #gold = gold[1:decoder_lengths[0]]  # trim padding and SOS
-                #gold = decode_string(gold, OUTPUT_WORD_TO_IDX)                
-        
-                # to add: system
-                #sentence = src[:, 0].view(-1)
-                #print(sentence)
-                
-                #print(f'step={counter} epoch={epoch} t={timer - timer_start} dt={timer - oldtimer} batchloss={loss.item()}')
-                
-                #print(f'\tverse: {sentence}\tgold: {gold}\t') # system: {system}')
-                #writer.add_text('sample', sentence + "<=>" + system, global_step=counter)
-                #writer.add_scalar('Loss/train', loss.item(), global_step=counter)
-                
-                #model.train()
-                
-    # return model
-
     
 def evaluate(model, loss_fn, val_dataloader, PAD_IDX):
     model.eval()
@@ -239,7 +162,7 @@ def evaluate(model, loss_fn, val_dataloader, PAD_IDX):
 
         src = src.to(device)
         tgt = tgt.to(device)
-
+        
         tgt_input = tgt[:-1, :]
 
         src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input, PAD_IDX)
