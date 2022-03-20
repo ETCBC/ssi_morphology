@@ -45,7 +45,7 @@ def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD:
 def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epochs, num_encoder_layers, num_decoder_layers, emb_size, 
                                nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim,
                                model_path, model_name, evaluation_data, dropout, batch_size,
-                               OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX):
+                               OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX, **kwargs):
 
     loaded_transf = Seq2SeqTransformer(num_encoder_layers, num_decoder_layers, emb_size, 
                                        nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
@@ -59,13 +59,20 @@ def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epoch
     correct_all_words = [0 for i in range(input_seq_len)]
     
     eval_path = f'./evaluation_results_transformer/new_preprocessing_{input_file}_{output_file}'
+    evaluation_file_name = f'{input_seq_len}seq_len_{lr}lr_{emb_size}embsize_{nhead}nhead_transformer_{dropout}dropout_{batch_size}batchsize_epochs{epochs}'
+    
+    if kwargs:
+        eval_path = eval_path + f'_{kwargs['input2']}_{kwargs['output2']}'
+        evaluation_file_name = evaluation_file_name + f'_epochs2_{kwargs['epochs2']}'
+    
     isExist = os.path.exists(eval_path)
     if not isExist: 
         os.makedirs(eval_path)
         
-    evaluation_file_name = f'{input_seq_len}seq_len_{lr}lr_epochs{epochs}_{emb_size}embsize_{nhead}nhead_transformer_{dropout}dropout_{batch_size}batchsize'
+    
+    
+    # Aangepast voor Samaritaanse pentateuch
     with open(f'{eval_path}/results_{evaluation_file_name}.txt', 'w') as f:
-            
         test_len = len(evaluation_data)
         for i in range(test_len):
     
@@ -77,9 +84,6 @@ def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epoch
 
             predicted_words = predicted.split()
             true_val_words = true_val.split()
-            
-            #if len(predicted_words) != input_seq_len:
-            #    continue
             
             if predicted == true_val:
                 correct_complete_sequence += 1

@@ -11,10 +11,10 @@ from model_transformer import Seq2SeqTransformer
 
 from config import check_abort, abort_handler
 
-def initialize_transformer_model(num_encoder_layers, num_decoder_layers, emb_size, nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim):
+def initialize_transformer_model(num_encoder_layers, num_decoder_layers, emb_size, nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim, dropout):
 
     transformer = Seq2SeqTransformer(num_encoder_layers, num_decoder_layers, emb_size, 
-                                 nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
+                                 nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim, dropout)
 
     for p in transformer.parameters():
         if p.dim() > 1:
@@ -43,57 +43,57 @@ def create_mask(src, tgt, PAD_IDX):
     return src_mask, tgt_mask, src_padding_mask, tgt_padding_mask
 
 
-def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataloader, num_epochs, PAD_IDX, torch_seed, learning_rate, log_dir, batch_size, INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX):
+# def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataloader, num_epochs, PAD_IDX, torch_seed, learning_rate, log_dir, batch_size, INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX):
 
-    torch.manual_seed(torch_seed)
+    # torch.manual_seed(torch_seed)
     
-    # Tell Python to run the abort_handler() function when SIGINT is recieved
-    signal(SIGINT, abort_handler)
+    # # Tell Python to run the abort_handler() function when SIGINT is recieved
+    # signal(SIGINT, abort_handler)
     
-    # tensorboard
-    writer = SummaryWriter(log_dir)
+    # # tensorboard
+    # writer = SummaryWriter(log_dir)
     
-    timer_start = time.time()
-    timer = timer_start
-    counter = 0
+    # timer_start = time.time()
+    # timer = timer_start
+    # counter = 0
     
-    model.train()
+    # model.train()
     
-    for epoch in range(num_epochs):
-        losses = 0
-        if check_abort():
-            break
+    # for epoch in range(num_epochs):
+        # losses = 0
+        # if check_abort():
+            # break
    
-        for src, tgt in train_dataloader:
-            if check_abort():
-                break
+        # for src, tgt in train_dataloader:
+            # if check_abort():
+                # break
     
-            counter += batch_size
-            src = src.to(device)
-            tgt = tgt.to(device)
+            # counter += batch_size
+            # src = src.to(device)
+            # tgt = tgt.to(device)
 
-            tgt_input = tgt[:-1, :]
+            # tgt_input = tgt[:-1, :]
 
-            src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input, PAD_IDX)
+            # src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input, PAD_IDX)
 
-            logits = model(src, tgt_input, src_mask, tgt_mask, src_padding_mask, tgt_padding_mask, src_padding_mask)
+            # logits = model(src, tgt_input, src_mask, tgt_mask, src_padding_mask, tgt_padding_mask, src_padding_mask)
 
-            optimizer.zero_grad()
+            # optimizer.zero_grad()
 
-            tgt_out = tgt[1:, :]
-            loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
+            # tgt_out = tgt[1:, :]
+            # loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
             
-            loss.backward()
+            # loss.backward()
 
-            optimizer.step()
-            losses += loss.item()  
+            # optimizer.step()
+            # losses += loss.item()  
 
-            # every N steps, print some diagnostics
-            if counter % 100*batch_size == 0:
-                oldtimer = timer
-                timer = time.time()
+            # # every N steps, print some diagnostics
+            # if counter % 100*batch_size == 0:
+                # oldtimer = timer
+                # timer = time.time()
                 
-        print('train loss: ', losses / len(train_dataloader))
+        # print('train loss: ', losses / len(train_dataloader))
                 
                 #model.eval()
                 
@@ -117,7 +117,7 @@ def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataload
                 
                 #model.train()
                 
-    return model
+    # return model
 
     
 def evaluate(model, loss_fn, val_dataloader, PAD_IDX):
