@@ -62,8 +62,8 @@ def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epoch
     evaluation_file_name = f'{input_seq_len}seq_len_{lr}lr_{emb_size}embsize_{nhead}nhead_transformer_{dropout}dropout_{batch_size}batchsize_epochs{epochs}'
     
     if kwargs:
-        eval_path = eval_path + f'_{kwargs['input2']}_{kwargs['output2']}'
-        evaluation_file_name = evaluation_file_name + f'_epochs2_{kwargs['epochs2']}'
+        eval_path = eval_path + f'_{kwargs["input2"]}_{kwargs["output2"]}'
+        evaluation_file_name = evaluation_file_name + f'_epochs2_{kwargs["epochs2"]}'
     
     isExist = os.path.exists(eval_path)
     if not isExist: 
