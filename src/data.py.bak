@@ -22,6 +22,7 @@ Dataset wrappers:
 import collections
 import re
 
+from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import Dataset
@@ -36,18 +37,18 @@ class DataReader:
     Split data in training, validation and test set.
     """
     def __init__(self, input_filename: str, output_filename: str, 
-                 sequence_length: int, val_test_size: float,
+                 sequence_length: int, val_plus_test_size: float,
                  INPUT_WORD_TO_IDX: dict, OUTPUT_WORD_TO_IDX: dict):
-                 
+                    
         self.input_filename = input_filename
         self.output_filename = output_filename
-        self.val_test_size = val_test_size
+        self.sequence_length = sequence_length
+        self.val_plus_test_size = val_plus_test_size
         self.INPUT_WORD_TO_IDX = INPUT_WORD_TO_IDX
         self.OUTPUT_WORD_TO_IDX = OUTPUT_WORD_TO_IDX
         
         with open(self.input_filename, 'r') as f:
             input_verses = f.readlines()
-
         with open(self.output_filename, 'r') as f:
             output_verses = f.readlines()
 
@@ -56,12 +57,12 @@ class DataReader:
         self.input_data = []
         self.output_data = []
         
+        all_input_words_per_book = collections.defaultdict(list)
+        all_output_words_per_book = collections.defaultdict(list)
+        
         all_input_words = collections.defaultdict(list)
         all_output_words = collections.defaultdict(list)
-
-        seq_len_verses_input = []
-        seq_len_verses_output = []
-
+        
         for i in range(len(input_verses)):
             bo, ch, ve, text = tuple(input_verses[i].strip().split('\t'))
             bo, ch, ve, output = tuple(output_verses[i].strip().split('\t'))
@@ -70,36 +71,51 @@ class DataReader:
             output_words = output.replace("_", "_ _").split()
             
             if (len(input_words) == len(output_words)):
-                seq_len_verses_input.append(input_words)
-                seq_len_verses_output.append(output_words)
-                if len(seq_len_verses_input) % sequence_length == 0:
-                    all_input_words[bo].append(seq_len_verses_input)
-                    all_output_words[bo].append(seq_len_verses_output)
-                    seq_len_verses_input = []
-                    seq_len_verses_output = []
-                    
+                all_input_words_per_book[bo].append(input_words)
+                all_output_words_per_book[bo].append(output_words)
             else:
                 print(f"Encoding issue with {bo} {ch} {ve} : mismatch in number of words")
                 print(input_words)
                 print(output_words)
-        
-        if len(seq_len_verses_input) > 0:
-            all_input_words[bo][-1] = all_input_words[bo][-1] + seq_len_verses_input
-            all_output_words[bo][-1] = all_output_words[bo][-1] + seq_len_verses_output
-        
-        all_inputs_list = []        
-        for bo, w_list in all_input_words.items():
-            flat_w_list = [word for sublist in w_list for word in sublist]
-            all_input_words[bo] = flat_w_list
 
-            for w_str in [' '.join(item) for item in flat_w_list]:
-                all_inputs_list.append(w_str)
+        all_input_words_per_book_grouped = self.group_verses(all_input_words_per_book)
+        all_output_words_per_book_grouped = self.group_verses(all_output_words_per_book)
+        
+        all_input_words = self.make_flat_lists(all_input_words_per_book_grouped)
+        all_output_words = self.make_flat_lists(all_output_words_per_book_grouped)
+
+        all_input_seq_lists, all_output_seq_lists = self.make_rolling_window_strings(all_input_words, all_output_words)
+                    
+        self.X_train, X_val_test, self.y_train, y_val_test = train_test_split(all_input_seq_lists, all_output_seq_lists, test_size=self.val_plus_test_size, random_state=42)
+        self.X_val, self.X_test, self.y_val, self.y_test = train_test_split(X_val_test, y_val_test, test_size=0.5, random_state=11)
+        
+        self.X_train = [item for sublist in self.X_train for item in sublist]
+        self.y_train = [item for sublist in self.y_train for item in sublist]
+        self.X_val = [item for sublist in self.X_val for item in sublist]
+        self.y_val = [item for sublist in self.y_val for item in sublist]
+        self.X_test = [item for sublist in self.X_test for item in sublist]
+        self.y_test = [item for sublist in self.y_test for item in sublist]
+        
+    def group_verses(self,
+                     all_words_per_book: dict):
+                     
+        grouped_verses_dict = {}
+        
+        for book, verse_list in all_words_per_book.items():
+        
+            if len(verse_list) <= self.sequence_length:
+                grouped_verses_dict[book] = [verse_list]
+            else:
+                grouped_verses = [verse_list[idx:idx+self.sequence_length] for idx in range(0, len(verse_list), self.sequence_length)]
+                if len(grouped_verses[-1]) < self.sequence_length:
+                    last_list = grouped_verses.pop(-1)
+                    grouped_verses[-1] += last_list
+                grouped_verses_dict[book] = grouped_verses
             
-            
-        for bo, w_list in all_output_words.items():
-            flat_w_list = [word for sublist in w_list for word in sublist]
-            all_output_words[bo] = flat_w_list
-            
+        return grouped_verses_dict
+        
+    def make_rolling_window_strings(self, all_input_words, all_output_words):
+    
         all_input_seq_lists = []
         all_output_seq_lists = []
         
@@ -107,12 +123,14 @@ class DataReader:
             for word_list_input, word_list_output in zip(all_input_words[bo], all_output_words[bo]):
                 input_seq_list = []
                 output_seq_list = []
-                for word_idx in range(len(word_list_input)-sequence_length+1):
-                    input_seq = ' '.join(word_list_input[word_idx:word_idx+sequence_length])
-                    output_seq = ' '.join(word_list_output[word_idx:word_idx+sequence_length])
+                for word_idx in range(len(word_list_input) - self.sequence_length + 1):
+                    input_seq = ' '.join(word_list_input[word_idx:word_idx + self.sequence_length])
+                    output_seq = ' '.join(word_list_output[word_idx:word_idx + self.sequence_length])
+                    
                     if "*" not in input_seq and "_" not in output_seq:
                         input_seq_list.append(input_seq)
                         output_seq_list.append(output_seq)
+                        
                         for char in input_seq:
                             if char not in self.INPUT_WORD_TO_IDX:
                                 self.INPUT_WORD_TO_IDX[char] = len(self.INPUT_WORD_TO_IDX)
@@ -123,15 +141,16 @@ class DataReader:
                     all_input_seq_lists.append(input_seq_list)
                     all_output_seq_lists.append(output_seq_list)
                     
-        self.X_train, X_val_test, self.y_train, y_val_test = train_test_split(all_input_seq_lists, all_output_seq_lists, test_size=self.val_test_size, random_state=42)
-        self.X_val, self.X_test, self.y_val, self.y_test = train_test_split(X_val_test, y_val_test, test_size=0.5, random_state=11)
+        return all_input_seq_lists, all_output_seq_lists
         
-        self.X_train = [item for sublist in self.X_train for item in sublist]
-        self.y_train = [item for sublist in self.y_train for item in sublist]
-        self.X_val = [item for sublist in self.X_val for item in sublist]
-        self.y_val = [item for sublist in self.y_val for item in sublist]
-        self.X_test = [item for sublist in self.X_test for item in sublist]
-        self.y_test = [item for sublist in self.y_test for item in sublist]
+    @staticmethod
+    def make_flat_lists(data_dict):
+        new_data_dict = {}
+        for bo, w_list in data_dict.items():
+            flat_w_list = [word for sublist in w_list for word in sublist]
+            new_data_dict[bo] = flat_w_list
+            
+        return new_data_dict
 
 
 class HebrewWords(Dataset):
