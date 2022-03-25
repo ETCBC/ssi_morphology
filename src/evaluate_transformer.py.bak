@@ -58,15 +58,14 @@ def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epoch
     correct_complete_sequence = 0
     correct_all_words = [0 for i in range(input_seq_len)]
     
-    eval_path = f'./evaluation_results_transformer/new_preprocessing_{input_file}_{output_file}'
-    evaluation_file_name = f'{input_seq_len}seq_len_{lr}lr_{emb_size}embsize_{nhead}nhead_transformer_{dropout}dropout_{batch_size}batchsize_epochs{epochs}'
+    eval_path = f'./evaluation_results_transformer/new_preprocessing_{input_file}_{output_file}_'
+    evaluation_file_name = f'{input_seq_len}seq_len_{lr}lr_{emb_size}embsize_{nhead}nhead_transformer_{dropout}dropout_{batch_size}batchsize_epochs{epochs}_'
     
-    if kwargs:
-        eval_path = eval_path + f'_{kwargs["input2"]}_{kwargs["output2"]}'
-        evaluation_file_name = evaluation_file_name + f'_epochs2_{kwargs["epochs2"]}'
+    eval_path = eval_path + f'{kwargs.get("input2", "_")}_{kwargs.get("output2", "_")}_{kwargs.get("training_type", "")}'
+    evaluation_file_name = evaluation_file_name + f'epochs2_{kwargs.get("epochs2", "")}'
     
     isExist = os.path.exists(eval_path)
-    if not isExist: 
+    if not isExist:
         os.makedirs(eval_path)
         
     

@@ -15,13 +15,118 @@ from torch.utils.data.sampler import SubsetRandomSampler
 
 from data import HebrewWords, DataReader, DataMerger, collate_fn, collate_transformer_fn, str2bool
 from model_transformer import Seq2SeqTransformer
-from model_rnn import HebrewEncoder, HebrewDecoder, save_encoder_decoder
 from transformer_train_fns import initialize_transformer_model, train_transformer, evaluate
 from rnn_train_fns import train_rnn
 from evaluate_transformer import greedy_decode, translate, evaluate_transformer_model
 
 from config import PAD_IDX, SOS_token, EOS_token
 
+
+class PipeLine:
+    def __init__(self, 
+                 input_file, 
+                 output_file, 
+                 length, 
+                 INPUT_WORD_TO_IDX, 
+                 OUTPUT_WORD_TO_IDX, 
+                 nel,
+                 ndl,
+                 emb,
+                 nh,
+                 ffn,
+                 dr,
+                 batch_size,
+                 epochs,
+                 learning_rate,
+                 input_file2=None, 
+                 output_file2=None,
+                 epochs2=0):
+                 
+        self.input_file = input_file
+        self.output_file = output_file
+        self.length = length
+        self.INPUT_WORD_TO_IDX = INPUT_WORD_TO_IDX
+        self.OUTPUT_WORD_TO_IDX = OUTPUT_WORD_TO_IDX
+        self.nel = nel
+        self.ndl = ndl
+        self.emb = emb
+        self.nh = nh
+        self.ffn = ffn
+        self.dr = dr
+        self.batch_size = batch_size
+        self.epochs = epochs
+        self.val_plus_test_size = 0.3
+        self.learning_rate = learning_rate
+        self.input_file2 = input_file2
+        self.output_file2 = output_file2
+        self.epochs2 = epochs2
+        self.torch_seed = 42
+        self.model_path = './transformer_models'
+        self.model_name = f'seq2seq_{self.length}seqlen_{self.learning_rate}lr_{self.epochs}_{self.epochs2}epochs_{self.emb}embedsize_{self.nh}nhead_{self.nel}nenclayers_{self.ndl}numdeclayers_transformer.pth'
+        self.log_dir = f'runs/{self.input_file}_{self.output_file}/{self.length}seq_len_{self.learning_rate}lr_{self.epochs}_{self.epochs2}epochs_{self.emb}embsize_{self.nh}nhead_{self.nel}nenclayers_{self.ndl}numdeclayers_transformer'
+        
+        self.data_set_one = DataReader(input_file, output_file, length, self.val_plus_test_size, INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX)
+        
+        if input_file2 and output_file2:
+            self.data_set_two = DataReader(input_file2, output_file2, length, self.val_plus_test_size, self.INPUT_WORD_TO_IDX, self.OUTPUT_WORD_TO_IDX)
+            self.INPUT_WORD_TO_IDX = self.data_set_two.INPUT_WORD_TO_IDX
+            self.OUTPUT_WORD_TO_IDX = self.data_set_two.OUTPUT_WORD_TO_IDX
+            
+        self.INPUT_IDX_TO_WORD = {v:k for k,v in self.INPUT_WORD_TO_IDX.items()}
+        self.OUTPUT_IDX_TO_WORD = {v:k for k,v in self.OUTPUT_WORD_TO_IDX.items()}
+        
+        self.src_vocab_size = len(self.INPUT_WORD_TO_IDX)+2
+        self.tgt_vocab_size = len(self.OUTPUT_WORD_TO_IDX)+2
+    
+    def make_pytorch_datasets(self, data):
+        data_set_train = HebrewWords(data.X_train, data.y_train, self.INPUT_WORD_TO_IDX, self.OUTPUT_WORD_TO_IDX)
+        data_set_val = HebrewWords(data.X_val, data.y_val, self.INPUT_WORD_TO_IDX, self.OUTPUT_WORD_TO_IDX)
+        data_set_test = HebrewWords(data.X_test, data.y_test, self.INPUT_WORD_TO_IDX, self.OUTPUT_WORD_TO_IDX)
+        return data_set_train, data_set_val, data_set_test
+        
+    def merge_datasets(self):
+        data_merger_train = DataMerger(self.data_set_one.X_train, self.data_set_two.X_train, self.data_set_one.y_train, self.data_set_two.y_train)
+        train_data_X, train_data_y = data_merger_train.merge_data()
+        train_data_X, train_data_y = data_merger_train.shuffle_data(train_data_X, train_data_y)
+        
+        data_merger_val = DataMerger(self.data_set_one.X_val, self.data_set_two.X_val, self.data_set_one.y_val, self.data_set_two.y_val)
+        val_data_X, val_data_y = data_merger_val.merge_data()
+        val_data_X, val_data_y = data_merger_train.shuffle_data(val_data_X, val_data_y)
+        return train_data_X, train_data_y, val_data_X, val_data_y
+        
+    def make_pytorch_merged_datasets(self, data_X_train, dat_y_train, data_X_val, data_y_val, data_X_test, data_y_test):
+        data_set_train = HebrewWords(data_X_train, dat_y_train, self.INPUT_WORD_TO_IDX, self.OUTPUT_WORD_TO_IDX)
+        data_set_val = HebrewWords(data_X_val, data_y_val, self.INPUT_WORD_TO_IDX, self.OUTPUT_WORD_TO_IDX)
+        data_set_test = HebrewWords(data_X_test, data_y_test, self.INPUT_WORD_TO_IDX, self.OUTPUT_WORD_TO_IDX)
+        return data_set_train, data_set_val, data_set_test
+        
+    def make_data_loader(self, train_data, eval_data):
+        train_dataloader = DataLoader(train_data, batch_size=self.batch_size, collate_fn=collate_transformer_fn)
+        eval_dataloader = DataLoader(eval_data, batch_size=self.batch_size, collate_fn=collate_transformer_fn)
+        return train_dataloader, eval_dataloader
+        
+    def initialize_model(self):
+        transformer = initialize_transformer_model(self.nel, self.ndl, self.emb, self.nh, self.src_vocab_size, self.tgt_vocab_size, self.ffn, self.dr)
+        return transformer
+        
+    def train_model(self, transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, PAD_IDX):
+        trained_model = train_transformer(transformer, loss_fn, optimizer, train_dataloader, 
+                                          eval_dataloader, self.epochs, PAD_IDX, self.torch_seed, 
+                                          self.learning_rate, self.log_dir, self.batch_size, self.INPUT_WORD_TO_IDX, 
+                                          self.OUTPUT_WORD_TO_IDX)
+        return trained_model
+        
+    def save_model(self, trained_model):
+        torch.save(trained_model.state_dict(), os.path.join(self.model_path, self.model_name))
+        
+    def evaluate_on_test_set(self, test_set, training_type):
+        evaluate_transformer_model(self.input_file, self.output_file, self.length, self.learning_rate, 
+                                   self.epochs, self.nel, self.ndl, self.emb, self.nh,
+                                   self.src_vocab_size, self.tgt_vocab_size, self.ffn,
+                                   self.model_path, self.model_name, test_set, self.dr, self.batch_size,
+                                   self.OUTPUT_IDX_TO_WORD, self.OUTPUT_WORD_TO_IDX, training_type,
+                                   input2=self.input_file2, output2=self.output_file2, epochs2=self.epochs2)
+    
 
 
 def main(PAD_IDX, SOS_token, EOS_token, args):
@@ -61,8 +166,6 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
     parser.add_argument("-ep", metavar="epochs", help="Specify the number of training epochs", type=int)
     parser.add_argument("-lr", metavar="learning_rate", help="Specify the learning rate", type=float)
     
-    parser.add_argument("-m", metavar="model_type", help="Chooses type of model: 'rnn' or 'transformer'", type=str)
-    
     # Arguments for second (Syriac) dataset
     parser.add_argument("-i2", metavar="input_filename2", help="Please specificy the second input datafile in the folder data", type=str, default='', nargs='?')
     parser.add_argument("-o2", metavar="output_filename2", help="Please specificy the second output datafile in the folder data", type=str, default='', nargs='?')
@@ -72,21 +175,26 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
     parser.add_argument("-emb", metavar="emb_size", help="Optional: Embedding size, must be divisible by number of heads (nhead)", type=int, default=512, nargs='?')
     parser.add_argument("-nh", metavar="nhead", help="Optional: Number of heads", type=int, default=8, nargs='?')
     parser.add_argument("-nel", metavar="num_encoder_layers", help="Optional: Number of layers in encoder", type=int, default=3, nargs='?')
+    parser.add_argument("-ffn", metavar="ffn_hid_dim", help="Optional: Feed Forward Network Hidden Dimension", type=int, default=512, nargs='?')
     parser.add_argument("-ndl", metavar="num_decoder_layers", help="Optional: Number of layers in decoder", type=int, default=3, nargs='?')
     parser.add_argument("-dr", metavar="dropout", help="Optional: dropout in transformer model", type=float, default=0.1, nargs='?')
     parser.add_argument("-b", metavar="batch_size", help="Optional: batch size during training", type=int, default=128, nargs='?')
     parser.add_argument("-wd", metavar="weight_decay", help="Optional: weight decay passed to optimizer", type=float, default=0.0, nargs='?')
     
-    # Hyperparameters of the RNN model.
-    parser.add_argument("-hd", metavar="hidden_dim", help="Optional: Number of cells in RNN layer", type=int, nargs='?')
-    parser.add_argument("-nl", metavar="num_layers", help="Optional: Nmber of hidden layers", type=int, nargs='?')
-    parser.add_argument("-bd", metavar="bidir", help="Optional: is the RNN model bidirectional or not", type=str2bool, const=True, default=False, nargs='?')
     
+    # Evaluate on test set or not
+    parser.add_argument("-et", metavar="eval_test", help="Optional: evaluate at the end on test set (True) or not (False)", type=str2bool, const=True, default=False, nargs='?')
+
     args = parser.parse_args()
     
+    if args.i2 and args.o2 and args.ep2:
+        training_type = 'two_datasets_sequentially'
+    elif args.i2 and args.o2:
+        training_type = 'two_datasets_simultaneously'
+    else:
+        training_type = 'one_dataset'
+        
     batch_size = args.b
-    val_plus_test_size = 0.3
-    torch_seed = 42
     
     INPUT_WORD_TO_IDX = {
                          'PAD': PAD_IDX,
@@ -100,157 +208,59 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
                           'EOS': EOS_token
                          }
     
-    # load the dataset, and split 70/15/15 in train/val/test
-    input_file = os.path.join("../data", args.i)
-    output_file = os.path.join("../data", args.o)
-    hebrew_data = DataReader(input_file, output_file, args.l, val_plus_test_size, INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX)
-    
-    # load the second dataset, and split 70/15/15 in test/val/test
-    if args.i2 and args.o2:
-        input_file_s = os.path.join("../data", args.i2)
-        output_file_s = os.path.join("../data", args.o2)
-        syriac_data = DataReader(input_file_s, output_file_s, args.l, val_plus_test_size, hebrew_data.INPUT_WORD_TO_IDX, hebrew_data.OUTPUT_WORD_TO_IDX)
-    
-        syriac_data.INPUT_IDX_TO_WORD = {v:k for k,v in syriac_data.INPUT_WORD_TO_IDX.items()}
-        syriac_data.OUTPUT_IDX_TO_WORD = {v:k for k,v in syriac_data.OUTPUT_WORD_TO_IDX.items()}
-        
-        # Make Hebrew dicts identical to Syriac dicts.
-        hebrew_data.INPUT_WORD_TO_IDX = syriac_data.INPUT_WORD_TO_IDX
-        hebrew_data.OUTPUT_WORD_TO_IDX = syriac_data.OUTPUT_WORD_TO_IDX
-        hebrew_data.INPUT_IDX_TO_WORD = syriac_data.INPUT_IDX_TO_WORD
-        hebrew_data.OUTPUT_IDX_TO_WORD = syriac_data.OUTPUT_IDX_TO_WORD
-        
-        # Hebrew and Syriac together
-        if not args.ep2:
-            training_type = 'two_datasets_simultaneously'
-            # Merge and shuffle Hebrew and Syriac data.
-            data_merger_train = DataMerger(hebrew_data.X_train, syriac_data.X_train, hebrew_data.y_train, syriac_data.y_train)
-            train_data_X, train_data_y = data_merger_train.merge_data()
-            train_data_X, train_data_y = data_merger_train.shuffle_data(train_data_X, train_data_y)
-    
-            data_merger_val = DataMerger(hebrew_data.X_val, syriac_data.X_val, hebrew_data.y_val, syriac_data.y_val)
-            val_data_X, val_data_y = data_merger_val.merge_data()
-            val_data_X, val_data_y = data_merger_train.shuffle_data(val_data_X, val_data_y)
+    pipeline = PipeLine(args.i, 
+                        args.o, 
+                        args.l, 
+                        INPUT_WORD_TO_IDX, 
+                        OUTPUT_WORD_TO_IDX, 
+                        args.nel, 
+                        args.ndl, 
+                        args.emb, 
+                        args.nh, 
+                        args.ffn, 
+                        args.dr, 
+                        args.b, 
+                        args.ep, 
+                        args.lr, 
+                        args.i2, 
+                        args.o2, 
+                        args.ep2)
 
-            # Make Pytorch datasets
-            bible_train = HebrewWords(train_data_X, train_data_y, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
-            bible_val = HebrewWords(val_data_X, val_data_y, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
-            # Test data contain Syriac sequences only.
-            bible_test = HebrewWords(syriac_data.X_test, syriac_data.y_test, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
 
-        # First Hebrew, then Syriac
-        else:
-            training_type = 'two_datasets_sequential'
-            # Make Pytorch datasets
-            bible_train = HebrewWords(hebrew_data.X_train, hebrew_data.y_train, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
-            bible_val = HebrewWords(hebrew_data.X_val, hebrew_data.y_val, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
-            bible_train_s = HebrewWords(syriac_data.X_train, syriac_data.y_train, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
-            bible_val_s = HebrewWords(syriac_data.X_val, syriac_data.y_val, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
-            # Test data contain Syriac sequences only.
-            bible_test = HebrewWords(syriac_data.X_test, syriac_data.y_test, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
-    
-    # Only Hebrew data
+    if training_type == 'two_datasets_simultaneously':
+        # Merge and shuffle Hebrew and Syriac data.
+        train_data_X, train_data_y, val_data_X, val_data_y = pipeline.merge_datasets()
+        hebrew_train, hebrew_val, hebrew_test = pipeline.make_pytorch_merged_datasets(train_data_X, 
+                                                                                      train_data_y, 
+                                                                                      val_data_X, 
+                                                                                      val_data_y, 
+                                                                                      pipeline.data_set_two.X_test, 
+                                                                                      pipeline.data_set_two.y_test)
+    elif training_type == 'two_datasets_sequentially':
+        hebrew_train, hebrew_val, _ = pipeline.make_pytorch_datasets(pipeline.data_set_one)
+        syr_train, syr_val, syr_test = pipeline.make_pytorch_datasets(pipeline.data_set_two)
     else:
-        training_type = 'one_dataset'
-        hebrew_data.INPUT_IDX_TO_WORD = {v:k for k,v in hebrew_data.INPUT_WORD_TO_IDX.items()}
-        hebrew_data.OUTPUT_IDX_TO_WORD = {v:k for k,v in hebrew_data.OUTPUT_WORD_TO_IDX.items()}
-        # Make Pytorch datasets
-        bible_train = HebrewWords(hebrew_data.X_train, hebrew_data.y_train, hebrew_data.INPUT_WORD_TO_IDX, hebrew_data.OUTPUT_WORD_TO_IDX)
-        bible_val = HebrewWords(hebrew_data.X_val, hebrew_data.y_val, hebrew_data.INPUT_WORD_TO_IDX, hebrew_data.OUTPUT_WORD_TO_IDX)
-        bible_test = HebrewWords(hebrew_data.X_test, hebrew_data.y_test, hebrew_data.INPUT_WORD_TO_IDX, hebrew_data.OUTPUT_WORD_TO_IDX)
-        
-    src_vocab_size = len(hebrew_data.INPUT_WORD_TO_IDX)+2
-    tgt_vocab_size = len(hebrew_data.OUTPUT_WORD_TO_IDX)+2
-   
-    if args.m == 'transformer':
+        hebrew_train, hebrew_val, hebrew_test = pipeline.make_pytorch_datasets(pipeline.data_set_one)
+
+    train_dataloader, eval_dataloader = pipeline.make_data_loader(hebrew_train, hebrew_val)
+    transformer = pipeline.initialize_model()
+    loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
+    optimizer = torch.optim.Adam(transformer.parameters(), lr=args.lr, betas=(0.9, 0.98), eps=1e-9, weight_decay=args.wd)
+    trained_transformer = pipeline.train_model(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, PAD_IDX)
     
-        ffn_hid_dim = 512
-        
-        train_dataloader = DataLoader(bible_train, batch_size=batch_size, collate_fn=collate_transformer_fn)
-        eval_dataloader = DataLoader(bible_val, batch_size=batch_size, shuffle=False, collate_fn=collate_transformer_fn)
-        
-        transformer = initialize_transformer_model(args.nel, 
-                                                   args.ndl, 
-                                                   args.emb, 
-                                                   args.nh, 
-                                                   src_vocab_size, 
-                                                   tgt_vocab_size, 
-                                                   ffn_hid_dim, args.dr)
-                                         
-        loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
-        optimizer = torch.optim.Adam(transformer.parameters(), lr=args.lr, betas=(0.9, 0.98), eps=1e-9, weight_decay=args.wd)
-        
-        log_dir = f'runs/{args.i}_{args.o}/{args.l}seq_len_{torch_seed}seed_{args.lr}lr_{args.ep}epochs_{args.emb}embsize_{args.nh}nhead_{args.nel}nenclayers_{args.ndl}numdeclayers_transformer'
-    
-        trained_transformer = train_transformer(transformer, 
-                                                loss_fn, 
-                                                optimizer, 
-                                                train_dataloader, 
-                                                eval_dataloader, 
-                                                args.ep, 
-                                                PAD_IDX, 
-                                                torch_seed, 
-                                                args.lr, 
-                                                log_dir, 
-                                                batch_size, 
-                                                hebrew_data.INPUT_WORD_TO_IDX, 
-                                                hebrew_data.OUTPUT_WORD_TO_IDX)
 
-        if args.i2 and args.o2 and args.ep2:
+    if training_type == 'two_datasets_sequentially':
+        train_dataloader_s, eval_dataloader_s = pipeline.make_data_loader(syr_train, syr_val)
+        trained_transformer = pipeline.train_model(trained_transformer, loss_fn, optimizer, train_dataloader_s, eval_dataloader_s, PAD_IDX)
+        pipeline.save_model(trained_transformer)
         
-            train_dataloader_s = DataLoader(bible_train_s, batch_size=batch_size, collate_fn=collate_transformer_fn)
-            eval_dataloader_s = DataLoader(bible_val_s, batch_size=50, shuffle=False, collate_fn=collate_transformer_fn)
-           
-            trained_transformer = train_transformer(trained_transformer, loss_fn, optimizer, train_dataloader_s, eval_dataloader_s, args.ep2, PAD_IDX, torch_seed, args.lr, log_dir, 
-                   batch_size, syriac_data.INPUT_WORD_TO_IDX, syriac_data.OUTPUT_WORD_TO_IDX)
-          
-            model_path = './transformer_models'
-            model_name = f'seq2seq_{args.l}seqlen_{torch_seed}seed_{args.lr}lr_{args.ep}epochs_{args.ep2}epochs2_{args.emb}embedsize_{args.nh}nhead_{args.nel}nenclayers_{args.ndl}numdeclayers_transformer.pth'
-            torch.save(trained_transformer.state_dict(), os.path.join(model_path, model_name))
-            evaluate_transformer_model(args.i, args.o, args.l, args.lr, args.ep, args.nel, 
-                                   args.ndl, args.emb, args.nh,
-                                   src_vocab_size, tgt_vocab_size, ffn_hid_dim,
-                                   model_path, model_name, bible_test, args.dr, batch_size,
-                                   syriac_data.OUTPUT_IDX_TO_WORD, syriac_data.OUTPUT_WORD_TO_IDX,
-                                   input2=args.i2, output2=args.o2, epochs2=args.ep2, training_type=training_type)
+        if args.et:
+            evaluate_on_test_set(test_set, training_type)
 
-        else:
-            model_path = './transformer_models'
-            model_name = f'seq2seq_{args.l}seqlen_{torch_seed}seed_{args.lr}lr_{args.ep}epochs_{args.emb}embedsize__{args.nh}nhead_{args.nel}nenclayers_{args.ndl}numdeclayers_transformer.pth'
-
-            torch.save(trained_transformer.state_dict(), os.path.join(model_path, model_name))
-        
-            evaluate_transformer_model(args.i, args.o, args.l, args.lr, args.ep, args.nel, 
-                                   args.ndl, args.emb, args.nh,
-                                   src_vocab_size, tgt_vocab_size, ffn_hid_dim,
-                                   model_path, model_name, bible_test, args.dr, batch_size,
-                                   hebrew_data.OUTPUT_IDX_TO_WORD, hebrew_data.OUTPUT_WORD_TO_IDX)
-                                                              
-    elif args.m == 'rnn':
-    
-        train_dataloader = DataLoader(training_data, batch_size=batch_size, collate_fn=collate_fn)
-        eval_dataloader = DataLoader(evaluation_data, batch_size=50, shuffle=False, collate_fn=collate_fn)
-        
-        encoder = HebrewEncoder(input_dim=len(bible.INPUT_WORD_TO_IDX), hidden_dim=args.hd, num_layers=args.nl, bidir=args.bd)
-        decoder = HebrewDecoder(hidden_dim=1*args.hd, output_dim=len(bible.OUTPUT_WORD_TO_IDX), num_layers=args.nl)
-
-        
-        loss_function = nn.NLLLoss()
-
-        encoder_optimizer = optim.Adam(encoder.parameters(), lr=args.lr)
-        decoder_optimizer = optim.Adam(decoder.parameters(), lr=args.lr)
-        
-        log_dir = f'runs/{args.l}seq_len_{args.nl}layers_{args.hd}hidden_{torch_seed}seed_{args.lr}lr_rnn'
-        
-        train_rnn(training_data=train_dataloader, evaluation_data=eval_dataloader,
-          encoder=encoder, decoder=decoder,
-          encoder_optimizer=encoder_optimizer, decoder_optimizer=decoder_optimizer,
-          loss_function=loss_function, log_dir=log_dir,
-          inp_wo2idx=bible.INPUT_WORD_TO_IDX, outp_w2idx=bible.OUTPUT_WORD_TO_IDX,
-          max_epoch=args.ep, torch_seed=torch_seed, learning_rate=args.lr, batch_size=20
-          )
-    
-        model_name = f'seq2seq_seqlen{args.l}_epochs{args.ep}_rnn.pth'
+    else:
+        pipeline.save_model(trained_transformer)
+        if args.et:
+            evaluate_on_test_set(test_set, training_type)
 
 
 if __name__ == '__main__':
