@@ -20,6 +20,7 @@ Dataset wrappers:
 
 """
 import collections
+import os
 import re
 
 from sklearn.utils import shuffle
@@ -40,8 +41,8 @@ class DataReader:
                  sequence_length: int, val_plus_test_size: float,
                  INPUT_WORD_TO_IDX: dict, OUTPUT_WORD_TO_IDX: dict):
                     
-        self.input_filename = input_filename
-        self.output_filename = output_filename
+        self.input_filename = os.path.join("../data", input_filename)
+        self.output_filename = os.path.join("../data", output_filename)
         self.sequence_length = sequence_length
         self.val_plus_test_size = val_plus_test_size
         self.INPUT_WORD_TO_IDX = INPUT_WORD_TO_IDX

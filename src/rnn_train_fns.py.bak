@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from data import decode_string
 from evaluate import score
-#from model_rnn import HebrewEncoder, HebrewDecoder, save_encoder_decoder, reshape_hidden
+from model_rnn import HebrewEncoder, HebrewDecoder, save_encoder_decoder, reshape_hidden
 
 # https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html
 def train_rnn(training_data=None, evaluation_data=None,

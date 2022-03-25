@@ -45,7 +45,7 @@ def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD:
 def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epochs, num_encoder_layers, num_decoder_layers, emb_size, 
                                nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim,
                                model_path, model_name, evaluation_data, dropout, batch_size,
-                               OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX, **kwargs):
+                               OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX, training_type, **kwargs):
 
     loaded_transf = Seq2SeqTransformer(num_encoder_layers, num_decoder_layers, emb_size, 
                                        nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
@@ -61,7 +61,7 @@ def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epoch
     eval_path = f'./evaluation_results_transformer/new_preprocessing_{input_file}_{output_file}_'
     evaluation_file_name = f'{input_seq_len}seq_len_{lr}lr_{emb_size}embsize_{nhead}nhead_transformer_{dropout}dropout_{batch_size}batchsize_epochs{epochs}_'
     
-    eval_path = eval_path + f'{kwargs.get("input2", "_")}_{kwargs.get("output2", "_")}_{kwargs.get("training_type", "")}'
+    eval_path = eval_path + f'{kwargs.get("input2", "_")}_{kwargs.get("output2", "_")}_{training_type}'
     evaluation_file_name = evaluation_file_name + f'epochs2_{kwargs.get("epochs2", "")}'
     
     isExist = os.path.exists(eval_path)
