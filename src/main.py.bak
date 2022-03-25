@@ -236,11 +236,9 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
                                                                                       val_data_y, 
                                                                                       pipeline.data_set_two.X_test, 
                                                                                       pipeline.data_set_two.y_test)
-            
     elif training_type == 'two_datasets_sequentially':
         hebrew_train, hebrew_val, _ = pipeline.make_pytorch_datasets(pipeline.data_set_one)
         syr_train, syr_val, syr_test = pipeline.make_pytorch_datasets(pipeline.data_set_two)
-
     else:
         hebrew_train, hebrew_val, hebrew_test = pipeline.make_pytorch_datasets(pipeline.data_set_one)
 

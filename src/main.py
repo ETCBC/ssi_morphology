@@ -1,6 +1,5 @@
 import sys
 import argparse
-import collections
 
 import os.path
 from timeit import default_timer as timer
@@ -11,12 +10,10 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import random_split, DataLoader, Subset
-from torch.utils.data.sampler import SubsetRandomSampler
 
 from data import HebrewWords, DataReader, DataMerger, collate_fn, collate_transformer_fn, str2bool
 from model_transformer import Seq2SeqTransformer
 from transformer_train_fns import initialize_transformer_model, train_transformer, evaluate
-from rnn_train_fns import train_rnn
 from evaluate_transformer import greedy_decode, translate, evaluate_transformer_model
 
 from config import PAD_IDX, SOS_token, EOS_token
