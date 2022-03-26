@@ -1,7 +1,9 @@
 import collections
 import os
-from config import device
+
 import torch
+
+from config import device
 from model_transformer import Seq2SeqTransformer
 from transformer_train_fns import generate_square_subsequent_mask
 
