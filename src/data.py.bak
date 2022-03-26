@@ -15,7 +15,6 @@ encode_string       Convert a string to a Torch Tensor, using a mapping
 decode_string       Convert a Torch Tensor to a string, using a mapping
 
 Dataset wrappers:
-    HebrewVerses    a pytorch Dataset around the hebrew bible, returns verses.
     HebrewWords     a pytroch Dataset arount the hebrew bible, returns words.
 
 """
@@ -323,50 +322,6 @@ def mc_expand(s: str) -> str:
     for c in MC_PREFIXES:
         s = re.sub(f'([^-{r}]*{c})', f'{c}\\1', s)
     return s
-
-
-def read_data_from_file(filename: str):
-    """Read data from a text file and return a Dict.
-
-    The file is one verse per line, tab separated with some metadata:
-    book chapter verse text
-
-    The function returns a dictionary indexed by 'book',
-    containing a list of all words.
-    """
-
-    data_dict = collections.defaultdict(list)
-
-    with open(filename) as fp:
-        line = fp.readline()
-        while line:
-            bo, ch, ve, text = tuple(line.strip().split('\t'))
-            words = text.split()
-            for w in words:
-                # in the output data, composite placenames have a '_',
-                # which cannot be found in the input data
-                words_split = w.split('_')
-                for word_split in words_split:
-                    data_dict[bo].append(word_split)
-
-            line = fp.readline()
-
-    return data_dict
-    
-    
-def str2bool(v):
-    """
-    Helper function needed to be able to use 
-    boolean variables in the command line arguments.
-    """
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
         
         
 class DataMerger:

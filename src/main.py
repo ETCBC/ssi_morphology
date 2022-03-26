@@ -1,9 +1,6 @@
 import sys
 import argparse
 
-import os.path
-from timeit import default_timer as timer
-
 from config import check_abort, abort_handler, device
 
 import torch
@@ -11,12 +8,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from data import HebrewWords, DataReader, DataMerger, collate_fn, collate_transformer_fn, str2bool
 from enums import TrainingType
-from model_transformer import Seq2SeqTransformer
-from pipeline import PipeLine
-from transformer_train_fns import initialize_transformer_model, train_transformer, evaluate
-from evaluate_transformer import greedy_decode, translate, evaluate_transformer_model
+from pipeline import PipeLine, str2bool
 
 from config import PAD_IDX, SOS_token, EOS_token
 
@@ -90,8 +83,6 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
         
     assert training_type
     
-    print(training_type)
-    print(training_type.name)
     
     INPUT_WORD_TO_IDX = {
                          'PAD': PAD_IDX,

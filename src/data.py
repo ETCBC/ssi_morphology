@@ -207,44 +207,6 @@ class HebrewWords(Dataset):
         return sample
 
 
-def collate_fn(batch):
-    """Collate (combine) several records into a single tensor.
-
-    The decoder_input and decoder_target are truncated and aligned
-    such that no needless work is done.
-
-    Returns:
-        encoder_input: torch.Tensor[Ti, B]
-        encoder_lengths: [B]
-
-        decoder_input: torch.Tensor[To, B]
-        decoder_target: torch.Tensor[To, B]
-        decoder_lengths: [B]
-    where:
-        B is batch size
-        Ti is length of longest input sequence
-        To is length of longest output sequence
-    """
-    # Encoder input
-    encoder_input = [b['encoded_text'] for b in batch]
-    encoder_input = pad_sequence(encoder_input, padding_value=PAD_IDX)
-    encoder_lengths = [b['encoded_text'].size()[0] for b in batch]
-
-    # Decoder input
-    # the input for the decoder, truncated so that we do not predict
-    # anything for the final EOS_token
-    decoder_input = [b['encoded_output'][:-1] for b in batch]
-    decoder_input = pad_sequence(decoder_input, padding_value=PAD_IDX)
-
-    # Decoder target
-    # the output for the decoder, shifted such that the first output
-    # corresponds to input of the SOS_token
-    decoder_target = [b['encoded_output'][1:] for b in batch]
-    decoder_target = pad_sequence(decoder_target, padding_value=PAD_IDX)
-    decoder_lengths = [b['encoded_output'].size()[0] - 1 for b in batch]
-
-    return encoder_input, encoder_lengths, decoder_input, decoder_target, decoder_lengths
-
 # function to collate data samples into batch tesors
 def collate_transformer_fn(batch):
   
@@ -322,50 +284,6 @@ def mc_expand(s: str) -> str:
     for c in MC_PREFIXES:
         s = re.sub(f'([^-{r}]*{c})', f'{c}\\1', s)
     return s
-
-
-def read_data_from_file(filename: str):
-    """Read data from a text file and return a Dict.
-
-    The file is one verse per line, tab separated with some metadata:
-    book chapter verse text
-
-    The function returns a dictionary indexed by 'book',
-    containing a list of all words.
-    """
-
-    data_dict = collections.defaultdict(list)
-
-    with open(filename) as fp:
-        line = fp.readline()
-        while line:
-            bo, ch, ve, text = tuple(line.strip().split('\t'))
-            words = text.split()
-            for w in words:
-                # in the output data, composite placenames have a '_',
-                # which cannot be found in the input data
-                words_split = w.split('_')
-                for word_split in words_split:
-                    data_dict[bo].append(word_split)
-
-            line = fp.readline()
-
-    return data_dict
-    
-    
-def str2bool(v):
-    """
-    Helper function needed to be able to use 
-    boolean variables in the command line arguments.
-    """
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
         
         
 class DataMerger:

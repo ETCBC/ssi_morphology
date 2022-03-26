@@ -1,3 +1,12 @@
+import os
+
+import torch
+from torch.utils.data import DataLoader
+
+from data import collate_transformer_fn, DataMerger, DataReader, HebrewWords
+from transformer_train_fns import initialize_transformer_model, train_transformer
+from evaluate_transformer import evaluate_transformer_model
+
 class PipeLine:
     def __init__(self, 
                  input_file, 
@@ -100,5 +109,21 @@ class PipeLine:
                                    self.epochs, self.nel, self.ndl, self.emb, self.nh,
                                    self.src_vocab_size, self.tgt_vocab_size, self.ffn,
                                    self.model_path, self.model_name, test_set, self.dr, self.batch_size,
-                                   self.OUTPUT_IDX_TO_WORD, self.OUTPUT_WORD_TO_IDX, training_type.name,
+                                   self.OUTPUT_IDX_TO_WORD, self.OUTPUT_WORD_TO_IDX, training_type,
                                    input2=self.input_file2, output2=self.output_file2, epochs2=self.epochs2)
+                                   
+    
+    
+def str2bool(v):
+    """
+    Helper function needed to be able to use 
+    boolean variables in the command line arguments.
+    """
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
