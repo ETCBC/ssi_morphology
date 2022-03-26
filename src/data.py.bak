@@ -20,6 +20,7 @@ Dataset wrappers:
 
 """
 import collections
+import os
 import re
 
 from sklearn.utils import shuffle

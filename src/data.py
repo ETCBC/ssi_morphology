@@ -15,7 +15,6 @@ encode_string       Convert a string to a Torch Tensor, using a mapping
 decode_string       Convert a Torch Tensor to a string, using a mapping
 
 Dataset wrappers:
-    HebrewVerses    a pytorch Dataset around the hebrew bible, returns verses.
     HebrewWords     a pytroch Dataset arount the hebrew bible, returns words.
 
 """
