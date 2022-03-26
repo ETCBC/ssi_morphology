@@ -8,9 +8,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from data import str2bool
 from enums import TrainingType
-from pipeline import PipeLine
+from pipeline import PipeLine, str2bool
 
 from config import PAD_IDX, SOS_token, EOS_token
 
