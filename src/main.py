@@ -82,6 +82,9 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
         training_type = TrainingType.ONE_DATASET
         
     assert training_type
+    assert args.l
+    assert args.ep
+    assert args.lr
     
     
     INPUT_WORD_TO_IDX = {
