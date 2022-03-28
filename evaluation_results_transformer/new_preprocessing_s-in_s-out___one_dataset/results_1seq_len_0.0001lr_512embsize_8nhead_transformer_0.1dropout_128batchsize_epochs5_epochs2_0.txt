@@ -1,4 +1,4 @@
-Predicted W->JN(J[W
+Predicted W->JNW
 Truevalue W->JN(>&W
 
 Correct complete strings 0.0
