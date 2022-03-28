@@ -18,10 +18,16 @@ def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_sym
         memory = memory.to(device)
         tgt_mask = (generate_square_subsequent_mask(ys.size(0))
                     .type(torch.bool)).to(device)
+        print('memory', memory)
+        print('mask', tgt_mask)
         out = model.decode(ys, memory, tgt_mask)
+        print('out', out)
         out = out.transpose(0, 1)
         prob = model.generator(out[:, -1])
+        print(prob)
         _, next_word = torch.max(prob, dim=1)
+        print(next_word, next_word.item())
+        print(torch.topk(prob, k=2, dim=1))
         next_word = next_word.item()
 
         ys = torch.cat([ys,
@@ -30,6 +36,51 @@ def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_sym
         if next_word == end_symbol:
             break
     return ys
+    
+#def beam_search(model, beam_width):
+def beam_search(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int, beam_width: int):
+    '''Decode an output from a model using beam search with specified beam_width'''
+    
+    src = src.to(device)
+    src_mask = src_mask.to(device)
+    memory = model.encode(src, src_mask)
+
+    # beam_seq keeps track of words in each beam
+    #beam_seq = np.empty((beam_width, 1), dtype=np.int32)
+    ys = torch.ones(beam_width, 1).fill_(start_symbol).type(torch.long).to(device)
+
+    # beam_log_probs is the likelihood of each beam
+    beam_log_probs = np.zeros((beam_width,1))
+
+    vocab_length = model.vocab_length
+    prob_char_given_prev = np.empty((beam_width, vocab_length))
+
+    done = False
+    first_char = True
+    while not done:
+
+        #if first_char:
+        #    prob_first_char = model.predict_next([])
+        #    log_prob_first_char = np.log(prob_first_char)
+        #    top_n, log_p = torch.topk(log_prob_first_char, beam_width, dim=1)
+        #    beam_seq[:,0] = top_n[0]
+        #    beam_log_probs[:,0] += log_p
+        #    first_char = False
+        #else:
+
+        for beam in range(beam_width):
+            prob_char_given_prev[beam] = model.predict_next(beam_seq[beam])
+        log_prob_char_given_prev = np.log(prob_char_given_prev)
+        log_prob_char = beam_log_probs + log_prob_char_given_prev
+        top_n, log_p = get_top_n(log_prob_char, beam_width)
+        beam_seq = torch.hstack((beam_seq[top_n[0]], top_n[1].reshape(-1,1)))
+
+        beam_log_probs = log_p.reshape(-1,1)
+
+        if len(beam_seq[0]) == max_len+10:
+            done = True
+
+    return beam_seq, beam_log_probs
 
 
 # actual function to translate input sentence into target language
@@ -40,6 +91,8 @@ def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD:
     src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool)
     tgt_tokens = greedy_decode(
         model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX['SOS'], OUTPUT_WORD_TO_IDX['EOS']).flatten()
+    
+    print(''.join([OUTPUT_IDX_TO_WORD[idx] for idx in list(tgt_tokens.cpu().numpy())]).replace('SOS', '').replace('EOS', ''))
     
     return ''.join([OUTPUT_IDX_TO_WORD[idx] for idx in list(tgt_tokens.cpu().numpy())]).replace('SOS', '').replace('EOS', '')
     
@@ -75,7 +128,7 @@ def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epoch
     # Aangepast voor Samaritaanse pentateuch
     with open(f'{eval_path}/results_{evaluation_file_name}.txt', 'w') as f:
         test_len = len(evaluation_data)
-        for i in range(test_len):
+        for i in range(1): #(test_len):
     
             predicted = translate(loaded_transf.to(device), evaluation_data[i]['encoded_text'].to(device), OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX)
             true_val = evaluation_data[i]['output']

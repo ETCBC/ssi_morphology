@@ -12,7 +12,7 @@ class PipeLine:
                  input_file: str, 
                  output_file: str, 
                  length: int, 
-                 INPUT_WORD_TO_IDX dict, 
+                 INPUT_WORD_TO_IDX: dict, 
                  OUTPUT_WORD_TO_IDX: dict, 
                  nel: int,
                  ndl: int,
@@ -23,9 +23,9 @@ class PipeLine:
                  batch_size: int,
                  epochs: int,
                  learning_rate: float,
-                 input_file2=None: str, 
-                 output_file2=None: str,
-                 epochs2=0: int):
+                 input_file2: str=None, 
+                 output_file2: str=None,
+                 epochs2: int=0):
                  
         self.input_file = input_file
         self.output_file = output_file

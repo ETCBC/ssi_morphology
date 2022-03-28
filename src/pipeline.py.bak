@@ -9,23 +9,23 @@ from evaluate_transformer import evaluate_transformer_model
 
 class PipeLine:
     def __init__(self, 
-                 input_file, 
-                 output_file, 
-                 length, 
-                 INPUT_WORD_TO_IDX, 
-                 OUTPUT_WORD_TO_IDX, 
-                 nel,
-                 ndl,
-                 emb,
-                 nh,
-                 ffn,
-                 dr,
-                 batch_size,
-                 epochs,
-                 learning_rate,
-                 input_file2=None, 
-                 output_file2=None,
-                 epochs2=0):
+                 input_file: str, 
+                 output_file: str, 
+                 length: int, 
+                 INPUT_WORD_TO_IDX: dict, 
+                 OUTPUT_WORD_TO_IDX: dict, 
+                 nel: int,
+                 ndl: int,
+                 emb: int,
+                 nh: int,
+                 ffn: int,
+                 dr: float,
+                 batch_size: int,
+                 epochs: int,
+                 learning_rate: float,
+                 input_file2=None: str, 
+                 output_file2=None: str,
+                 epochs2=0: int):
                  
         self.input_file = input_file
         self.output_file = output_file
@@ -114,7 +114,7 @@ class PipeLine:
                                    
     
     
-def str2bool(v):
+def str2bool(v: str) -> bool:
     """
     Helper function needed to be able to use 
     boolean variables in the command line arguments.
