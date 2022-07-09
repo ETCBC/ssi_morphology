@@ -39,6 +39,9 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
     :ep: number of training epochs
     :lr: learning rate
     
+    E.g., run:
+    python main.py -i=t-in_voc -o=t-out -l=4 -ep=3 -lr=0.0001
+    
     :i2: second input file
     :o2: second output file
     :ep2: number of epochs for training second dataset
