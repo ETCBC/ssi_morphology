@@ -1,0 +1,5 @@
+Predicted W->JNW
+Truevalue W->JN(>&W
+
+Correct complete strings 0.0
+Correct distinct words [0.0]
