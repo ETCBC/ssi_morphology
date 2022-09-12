@@ -36,19 +36,19 @@ Train model on Syriac data:
 python main.py -i=s-in -o=s-out -ep=2 -l=5 -lr=0.0001
 
 The required command line arguments are:
--:i: filename of file with input sequences.
--:o: filename of file with output sequences.
--:l: number of graphical units in input sequence, e.g, "BR>CJT" has length 1, "BR>CJT BR>" has length 2, etc.
--:ep: number of training epochs
--:lr: learning rate
+- :i: filename of file with input sequences.
+- :o: filename of file with output sequences.
+- :l: number of graphical units in input sequence, e.g, "BR>CJT" has length 1, "BR>CJT BR>" has length 2, etc.
+- :ep: number of training epochs
+- :lr: learning rate
 
 ### 2. Train on two datasets (data are mixed)
 It is also possible to train a model on Hebrew and Syriac data together. Here, data are imported and mixed before training takes place.
 python main.py -i=t-in_voc -o=t-out -i2=s-in -o2=s-out -ep=2 -l=5 -lr=0.0001
 
 There are two extra arguments:
--:i2: the second input file.
--:o2: the second output file.
+- :i2: the second input file.
+- :o2: the second output file.
 
 ### 3. Train on two datasets (sequentially)
 You can also apply Transfer Learning. With Transfer Learning, you will first train the model on Hebrew data, after which you continue training the model on Syriac data.
@@ -56,19 +56,19 @@ python main.py -i=t-in_voc -o=t-out -i2=s-in -o2=s-out -ep=2 -ep2=2 -l=5 -lr=0.0
 
 There is an extra command argument:
 
--:ep2: Number of epochs for training the second (Syriac) dataset. With this argument the script will recognize that sequential training is needed.
+- :ep2: Number of epochs for training the second (Syriac) dataset. With this argument the script will recognize that sequential training is needed.
 
 An optional argument is:
 
--:et: Default is False, if set to True, the model will be evaluated on the test set. In the case of training on two datasets, the test set will contain data from the second output file (o2).
+- :et: Default is False, if set to True, the model will be evaluated on the test set. In the case of training on two datasets, the test set will contain data from the second output file (o2).
 
 There is a number of other optional arguments, which can be used to optimize the model:
 
--:emb: Embedding size, must be divisible by number of heads, default=512.
--:nh:, Number of heads, default=8.
--:nel:, Number of layers in encoder", default=3
--:ffn:, Feed Forward Network Hidden Dimension, default=512.
--:ndl:, Number of layers in decoder, default=3.
--:dr:, Dropout in transformer model, default=0.1.
--:b:, Batch size during training, default=128.
--:wd:, Weight decay, default=0.0.
+- :emb: Embedding size, must be divisible by number of heads, default=512.
+- :nh:, Number of heads, default=8.
+- :nel:, Number of layers in encoder", default=3
+- :ffn:, Feed Forward Network Hidden Dimension, default=512.
+- :ndl:, Number of layers in decoder, default=3.
+- :dr:, Dropout in transformer model, default=0.1.
+- :b:, Batch size during training, default=128.
+- :wd:, Weight decay, default=0.0.
