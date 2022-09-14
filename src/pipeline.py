@@ -121,7 +121,7 @@ class PipeLine:
         }
         config_name = 'model_config' + self.model_name + '.json'
         
-        model_folder = f'{self.input_file}_{self.output_file}_{training_type}'
+        model_folder = f'MODEL_{self.input_file}_{self.output_file}_{training_type}'
         if self.input_file2 and self.output_file2:
             model_folder = model_folder + f'_{self.input_file2}_{self.output_file2}'
         

@@ -51,13 +51,16 @@ def main(args):
     """
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", metavar="input_filename", help="Please specificy the input datafile in the folder data", type=str)
-    parser.add_argument("-o", metavar="output_filename", help="Please specificy the output datafile in the folder data", type=str)
-    parser.add_argument("-l", metavar="input_seq_len", help="Designate the number of words in one input string", type=int)
-    parser.add_argument("-ep", metavar="epochs", help="Specify the number of training epochs", type=int)
-    parser.add_argument("-lr", metavar="learning_rate", help="Specify the learning rate", type=float)
+    parser.add_argument("-mo", metavar="mode", help="Is the mode training a new model or predicting with trained model. Can be 'train' or 'predict", type=str)
     
-    # Arguments for second (Syriac) dataset
+    # Arguments required for training mode.
+    parser.add_argument("-i", metavar="input_filename", help="Please specificy the input datafile in the folder data", type=str, nargs='?')
+    parser.add_argument("-o", metavar="output_filename", help="Please specificy the output datafile in the folder data", type=str, nargs='?')
+    parser.add_argument("-l", metavar="input_seq_len", help="Designate the number of words in one input string", type=int, nargs='?')
+    parser.add_argument("-ep", metavar="epochs", help="Specify the number of training epochs", type=int, nargs='?')
+    parser.add_argument("-lr", metavar="learning_rate", help="Specify the learning rate", type=float, nargs='?')
+    
+    # Arguments for second (Syriac) dataset.
     parser.add_argument("-i2", metavar="input_filename2", help="Please specificy the second input datafile in the folder data", type=str, default='', nargs='?')
     parser.add_argument("-o2", metavar="output_filename2", help="Please specificy the second output datafile in the folder data", type=str, default='', nargs='?')
     parser.add_argument("-ep2", metavar="epochs_syr", help="Specify the number of training epochs of syriac", type=int, default=0, nargs='?')
@@ -72,10 +75,24 @@ def main(args):
     parser.add_argument("-b", metavar="batch_size", help="Optional: batch size during training", type=int, default=128, nargs='?')
     parser.add_argument("-wd", metavar="weight_decay", help="Optional: weight decay passed to optimizer", type=float, default=0.0, nargs='?')
     
-    # Evaluate on test set or not
+    # Evaluate on test set or not.
     parser.add_argument("-et", metavar="eval_test", help="Optional: evaluate at the end on test set (True) or not (False)", type=str2bool, const=True, default=False, nargs='?')
+    
+    # Argument required if mode is "predict".
+    parser.add_argument("-f", metavar="file_name", help="File containing the new data on which predictions are made", type=str, nargs='?')
 
     args = parser.parse_args()
+    
+    assert args.mo
+    
+    if args.mo == 'predict':
+        assert args.f
+    elif args.mo == 'train':
+        assert args.i
+        assert args.o
+        assert args.l
+        assert args.ep
+        assert args.lr
     
     
     if args.i2 and args.o2 and args.ep2:
@@ -86,10 +103,7 @@ def main(args):
         training_type = TrainingType.ONE_DATASET
         
     assert training_type
-    assert args.l
-    assert args.ep
-    assert args.lr
-    
+
     
     INPUT_WORD_TO_IDX = {
                          'PAD': PAD_IDX,
