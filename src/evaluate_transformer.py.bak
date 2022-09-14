@@ -45,8 +45,7 @@ def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD:
     
     
 def evaluate_transformer_model(eval_path: str, 
-                               evaluation_file_name: str,
-                               input_seq_len: int,
+                               evaluation_file_name: str,  
                                num_encoder_layers: int, 
                                num_decoder_layers: int, 
                                emb_size: int, 

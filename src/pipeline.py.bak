@@ -144,7 +144,6 @@ class PipeLine:
 
         evaluate_transformer_model(eval_path,
                                    evaluation_file_name,
-                                   self.length,
                                    self.nel,
                                    self.ndl,
                                    self.emb,

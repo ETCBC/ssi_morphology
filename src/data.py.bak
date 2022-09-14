@@ -188,16 +188,19 @@ class HebrewWords(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        text_input = self.input_data[idx]
-
-        text_output = mc_reduce(self.output_data[idx])
+        # data properties from the intput
+        text = self.input_data[idx]
 
         sample = {
-                "text": text_input,
-                "encoded_text": encode_string(text_input, self.INPUT_WORD_TO_IDX, add_sos=False, add_eos=True),
-                "output": text_output,
-                "encoded_output": encode_string(text_output, self.OUTPUT_WORD_TO_IDX, add_sos=True, add_eos=True)
+                "text": text,
+                "encoded_text": encode_string(text, self.INPUT_WORD_TO_IDX, add_sos=False, add_eos=True)
                 }
+
+        text = self.output_data[idx]
+        text = mc_reduce(text)
+
+        sample["output"] = text
+        sample["encoded_output"] = encode_string(text, self.OUTPUT_WORD_TO_IDX, add_sos=True, add_eos=True)
 
         return sample
 
@@ -282,10 +285,6 @@ def mc_expand(s: str) -> str:
         
         
 class DataMerger:
-    """
-    Class is used when model is trained on two datasets (Hebrew and Syriac)
-    at the same time.
-    """
     def __init__(self, 
                  input1: list, 
                  input2: list,
