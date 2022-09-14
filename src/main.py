@@ -9,12 +9,13 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from enums import TrainingType
-from pipeline import PipeLine, str2bool
+from pipeline import PipeLine
+from utils import str2bool
 
-from config import PAD_IDX, SOS_token, EOS_token
+from config import PAD_IDX, SOS_token, EOS_token, MODEL_PATH, EVALUATION_RESULTS_PATH
 
 
-def main(PAD_IDX, SOS_token, EOS_token, args):
+def main(args):
     """
     Train a Transformer model.
     
@@ -115,10 +116,13 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
                         args.dr, 
                         args.b, 
                         args.ep, 
-                        args.lr, 
-                        args.i2, 
+                        args.lr,  
+                        MODEL_PATH,
+                        EVALUATION_RESULTS_PATH,
+                        args.i2,
                         args.o2, 
-                        args.ep2)
+                        args.ep2
+                        )
 
 
     if training_type == TrainingType.TWO_DATASETS_SIMULTANEOUSLY:
@@ -144,7 +148,7 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
     
     # Save and evaluate model
     if training_type in {TrainingType.TWO_DATASETS_SIMULTANEOUSLY, TrainingType.ONE_DATASET}:
-        pipeline.save_model(trained_transformer)
+        pipeline.save_model(trained_transformer, training_type.name)
         if args.et:
             pipeline.evaluate_on_test_set(test_set, training_type.name)
          
@@ -152,10 +156,10 @@ def main(PAD_IDX, SOS_token, EOS_token, args):
     elif training_type == TrainingType.TWO_DATASETS_SEQUENTIALLY:
         train_dataloader_s, eval_dataloader_s = pipeline.make_data_loader(syr_train, syr_val)
         trained_transformer = pipeline.train_model(trained_transformer, loss_fn, optimizer, train_dataloader_s, eval_dataloader_s, PAD_IDX)
-        pipeline.save_model(trained_transformer)
+        pipeline.save_model(trained_transformer, training_type)
         if args.et:
             pipeline.evaluate_on_test_set(test_set, training_type.name)
 
 
 if __name__ == '__main__':
-    main(PAD_IDX, SOS_token, EOS_token, sys.argv[1:])
+    main(sys.argv[1:])

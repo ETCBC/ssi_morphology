@@ -164,9 +164,7 @@ def evaluate(model, loss_fn, val_dataloader, PAD_IDX):
         tgt = tgt.to(device)
         
         tgt_input = tgt[:-1, :]
-
         src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input, PAD_IDX)
-
         logits = model(src, tgt_input, src_mask, tgt_mask, src_padding_mask, tgt_padding_mask, src_padding_mask)
         
         tgt_out = tgt[1:, :]

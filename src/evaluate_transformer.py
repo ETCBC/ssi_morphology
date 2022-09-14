@@ -7,8 +7,9 @@ from config import device
 from model_transformer import Seq2SeqTransformer
 from transformer_train_fns import generate_square_subsequent_mask
 
-# function to generate output sequence using greedy algorithm 
+
 def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int):
+    """Function to generate output sequence using greedy algorithm """
     src = src.to(device)
     src_mask = src_mask.to(device)
 
@@ -30,9 +31,8 @@ def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_sym
         if next_word == end_symbol:
             break
     return ys
- 
 
-# actual function to translate input sentence into target language
+
 def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD: dict, OUTPUT_WORD_TO_IDX: dict):
     model.eval()
     src = encoded_sentence.view(-1, 1)
@@ -44,30 +44,33 @@ def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD:
     return ''.join([OUTPUT_IDX_TO_WORD[idx] for idx in list(tgt_tokens.cpu().numpy())]).replace('SOS', '').replace('EOS', '')
     
     
-def evaluate_transformer_model(input_file, output_file, input_seq_len, lr, epochs, num_encoder_layers, num_decoder_layers, emb_size, 
-                               nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim,
-                               model_path, model_name, evaluation_data, dropout, batch_size,
-                               OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX, training_type, **kwargs):
+def evaluate_transformer_model(eval_path: str, 
+                               evaluation_file_name: str,
+                               input_seq_len: int,
+                               num_encoder_layers: int, 
+                               num_decoder_layers: int, 
+                               emb_size: int, 
+                               nhead: int, 
+                               src_vocab_size: int, 
+                               tgt_vocab_size: int, 
+                               ffn_hid_dim: int,
+                               model_path_full: str, 
+                               evaluation_data, 
+                               OUTPUT_IDX_TO_WORD: dict, 
+                               OUTPUT_WORD_TO_IDX: dict):
 
     loaded_transf = Seq2SeqTransformer(num_encoder_layers, num_decoder_layers, emb_size, 
                                        nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
                                  
-    loaded_transf.load_state_dict(torch.load(os.path.join(model_path, model_name)))
+    loaded_transf.load_state_dict(torch.load(model_path_full))
     loaded_transf.eval()
 
     word_eval_dict = collections.defaultdict(lambda: collections.defaultdict(list))
 
     correct_complete_sequence = 0
     correct_all_words = [0 for i in range(input_seq_len)]
-    
-    eval_path = f'../evaluation_results_transformer/new_preprocessing_{input_file}_{output_file}_'
-    evaluation_file_name = f'{input_seq_len}seq_len_{lr}lr_{emb_size}embsize_{nhead}nhead_transformer_{dropout}dropout_{batch_size}batchsize_epochs{epochs}_'
-    
-    eval_path = eval_path + f'{kwargs.get("input2", "_")}_{kwargs.get("output2", "_")}_{training_type}'
-    evaluation_file_name = evaluation_file_name + f'epochs2_{kwargs.get("epochs2", "")}'
-    
-    isExist = os.path.exists(eval_path)
-    if not isExist:
+
+    if not os.path.exists(eval_path):
         os.makedirs(eval_path)
 
     with open(f'{eval_path}/results_{evaluation_file_name}.txt', 'w') as f:

@@ -1,3 +1,4 @@
+import json
 import os
 
 import torch
@@ -23,9 +24,12 @@ class PipeLine:
                  batch_size: int,
                  epochs: int,
                  learning_rate: float,
+                 model_path: str,
+                 evaluation_results_path: str,
                  input_file2: str=None, 
                  output_file2: str=None,
-                 epochs2: int=0):
+                 epochs2: int=0
+                 ):
                  
         self.input_file = input_file
         self.output_file = output_file
@@ -42,14 +46,16 @@ class PipeLine:
         self.epochs = epochs
         self.val_plus_test_size = 0.3
         self.learning_rate = learning_rate
+        self.model_path = model_path
+        self.evaluation_results_path = evaluation_results_path
         self.input_file2 = input_file2
         self.output_file2 = output_file2
         self.epochs2 = epochs2
         self.torch_seed = 42
-        self.model_path = '../transformer_models'
         self.model_name = f'seq2seq_{self.length}seqlen_{self.learning_rate}lr_{self.epochs}_{self.epochs2}epochs_{self.emb}embedsize_{self.nh}nhead_{self.nel}nenclayers_{self.ndl}numdeclayers_transformer.pth'
         self.log_dir = f'runs/{self.input_file}_{self.output_file}/{self.length}seq_len_{self.learning_rate}lr_{self.epochs}_{self.epochs2}epochs_{self.emb}embsize_{self.nh}nhead_{self.nel}nenclayers_{self.ndl}numdeclayers_transformer'
-        
+        self.model_path_full = None
+
         self.data_set_one = DataReader(input_file, output_file, length, self.val_plus_test_size, INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX)
         
         if input_file2 and output_file2:
@@ -101,29 +107,53 @@ class PipeLine:
                                           self.OUTPUT_WORD_TO_IDX)
         return trained_model
         
-    def save_model(self, trained_model):
-        torch.save(trained_model.state_dict(), os.path.join(self.model_path, self.model_name))
+        
+    def save_model(self, trained_model, training_type):
+        """
+        Saves model and model configuration.
+        The configuration consists of the sequence length and the dictionaries needed
+        to convert input and output sequences from characters to integers.
+        The configuration is needed if one wants to make predictions on new data.
+        """
+        model_config = {'seq_len': self.length,
+                        'input_w2idx': self.INPUT_WORD_TO_IDX,
+                        'output_w2idx': self.OUTPUT_WORD_TO_IDX
+        }
+        config_name = 'model_config' + self.model_name + '.json'
+        
+        model_folder = f'{self.input_file}_{self.output_file}_{training_type}'
+        if self.input_file2 and self.output_file2:
+            model_folder = model_folder + f'_{self.input_file2}_{self.output_file2}'
+        
+        pth = os.path.join(self.model_path, model_folder)
+        if not os.path.exists(pth):
+            os.makedirs(pth)
+        self.model_path_full = os.path.join(pth, self.model_name)
+        with open(os.path.join(pth, config_name), 'w') as json_file:
+            json.dump(model_config, json_file, indent=4)
+        torch.save(trained_model.state_dict(), self.model_path_full)
+
         
     def evaluate_on_test_set(self, test_set, training_type):
-        evaluate_transformer_model(self.input_file, self.output_file, self.length, self.learning_rate, 
-                                   self.epochs, self.nel, self.ndl, self.emb, self.nh,
-                                   self.src_vocab_size, self.tgt_vocab_size, self.ffn,
-                                   self.model_path, self.model_name, test_set, self.dr, self.batch_size,
-                                   self.OUTPUT_IDX_TO_WORD, self.OUTPUT_WORD_TO_IDX, training_type,
-                                   input2=self.input_file2, output2=self.output_file2, epochs2=self.epochs2)
-                                   
     
-    
-def str2bool(v: str) -> bool:
-    """
-    Helper function needed to be able to use 
-    boolean variables in the command line arguments.
-    """
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
+        eval_path = f'{self.evaluation_results_path}/{self.input_file}_{self.output_file}_{training_type}'
+        evaluation_file_name = f'{self.length}seq_len_{self.learning_rate}lr_{self.emb}embsize_{self.nh}nhead_transformer_{self.dr}dropout_{self.batch_size}batchsize_epochs_{self.epochs}'
+        if self.input_file2 and self.output_file2:
+            eval_path = eval_path + f'_{self.input_file2}_{self.output_file2}'
+            evaluation_file_name = evaluation_file_name + f'_epochs2_{self.epochs2}'
+
+        evaluate_transformer_model(eval_path,
+                                   evaluation_file_name,
+                                   self.length,
+                                   self.nel,
+                                   self.ndl,
+                                   self.emb,
+                                   self.nh,
+                                   self.src_vocab_size,
+                                   self.tgt_vocab_size,
+                                   self.ffn,
+                                   self.model_path_full,
+                                   test_set,
+                                   self.OUTPUT_IDX_TO_WORD, 
+                                   self.OUTPUT_WORD_TO_IDX
+                                   )

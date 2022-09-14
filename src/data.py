@@ -36,9 +36,13 @@ class DataReader:
     and collect data in groups of sequence_length sequential verses.
     Split data in training, validation and test set.
     """
-    def __init__(self, input_filename: str, output_filename: str, 
-                 sequence_length: int, val_plus_test_size: float,
-                 INPUT_WORD_TO_IDX: dict, OUTPUT_WORD_TO_IDX: dict):
+    def __init__(self, 
+                 input_filename: str, 
+                 output_filename: str, 
+                 sequence_length: int, 
+                 val_plus_test_size: float,
+                 INPUT_WORD_TO_IDX: dict, 
+                 OUTPUT_WORD_TO_IDX: dict):
                     
         self.input_filename = os.path.join("../data", input_filename)
         self.output_filename = os.path.join("../data", output_filename)
@@ -52,16 +56,13 @@ class DataReader:
         with open(self.output_filename, 'r') as f:
             output_verses = f.readlines()
 
-        assert(len(input_verses) == len(output_verses))
+        assert len(input_verses) == len(output_verses)
 
         self.input_data = []
         self.output_data = []
         
         all_input_words_per_book = collections.defaultdict(list)
         all_output_words_per_book = collections.defaultdict(list)
-        
-        all_input_words = collections.defaultdict(list)
-        all_output_words = collections.defaultdict(list)
         
         for i in range(len(input_verses)):
             bo, ch, ve, text = tuple(input_verses[i].strip().split('\t'))
@@ -96,8 +97,7 @@ class DataReader:
         self.X_test = [item for sublist in self.X_test for item in sublist]
         self.y_test = [item for sublist in self.y_test for item in sublist]
         
-    def group_verses(self,
-                     all_words_per_book: dict):
+    def group_verses(self, all_words_per_book: dict):
                      
         grouped_verses_dict = {}
         
@@ -156,15 +156,16 @@ class DataReader:
 class HebrewWords(Dataset):
     """A Pytorch wrapper around the hebrew bible text. Processed per word."""
 
-    def __init__(self, input_data: list, output_data: list,
-                  INPUT_WORD_TO_IDX: dict, OUTPUT_WORD_TO_IDX: dict):
+    def __init__(self, 
+                 input_data: list, 
+                 output_data: list,
+                 INPUT_WORD_TO_IDX: dict, 
+                 OUTPUT_WORD_TO_IDX: dict):
         """
         Args:
-            input_filename (str)
-            output_filename (str)
-            sequence_length (int): number of words in single training sample
-            transform (callable, optional): Optional transform to be applied
-                            on a sample.
+            input_data: list contains text sequences (str)
+            output_data: list  contains text sequences (str)
+            INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX: dict used for conversion from chars to intergers and back.
         The files are formatted as one verse per line, with tab separated
         metadata: book chapter verse text
         Note: output is reduced using the mc_reduce function
@@ -187,22 +188,16 @@ class HebrewWords(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        # data properties from the intput
-        text = self.input_data[idx]
+        text_input = self.input_data[idx]
+
+        text_output = mc_reduce(self.output_data[idx])
 
         sample = {
-                "text": text,
-                "encoded_text": encode_string(text, self.INPUT_WORD_TO_IDX, add_sos=False, add_eos=True)
+                "text": text_input,
+                "encoded_text": encode_string(text_input, self.INPUT_WORD_TO_IDX, add_sos=False, add_eos=True),
+                "output": text_output,
+                "encoded_output": encode_string(text_output, self.OUTPUT_WORD_TO_IDX, add_sos=True, add_eos=True)
                 }
-
-        # data properties from the output
-        text = self.output_data[idx]
-
-        # reduce output to simpler form
-        text = mc_reduce(text)
-
-        sample["output"] = text
-        sample["encoded_output"] = encode_string(text, self.OUTPUT_WORD_TO_IDX, add_sos=True, add_eos=True)
 
         return sample
 
@@ -287,8 +282,15 @@ def mc_expand(s: str) -> str:
         
         
 class DataMerger:
-    def __init__(self, input1: list, input2: list,
-                 output1: list, output2: list):
+    """
+    Class is used when model is trained on two datasets (Hebrew and Syriac)
+    at the same time.
+    """
+    def __init__(self, 
+                 input1: list, 
+                 input2: list,
+                 output1: list, 
+                 output2: list):
         self.input1 = input1
         self.input2 = input2
         self.output1 = output1
