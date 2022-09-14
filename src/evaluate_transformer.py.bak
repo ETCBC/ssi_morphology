@@ -102,34 +102,3 @@ def evaluate_transformer_model(eval_path: str,
         f.write('\n')
         f.write(f'Correct complete strings {correct_complete_sequence / test_len}\n')
         f.write(f'Correct distinct words {[correct_count / test_len for correct_count in correct_all_words]}\n')
-        
-        
-def predictions_transformer_model(num_encoder_layers, num_decoder_layers, emb_size,
-                                  nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim,
-                                  model_path, model_name, evaluation_data,
-                                  OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX, training_type):
-    loaded_transf = Seq2SeqTransformer(num_encoder_layers, num_decoder_layers, emb_size,
-                                       nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
-
-    loaded_transf.load_state_dict(torch.load(os.path.join(model_path, model_name)))
-    loaded_transf.eval()
-
-    eval_path = f'../evaluation_results_transformer/'
-    evaluation_file_name = 'predictions_samaritan_genesis'
-
-    eval_path = eval_path + f'samaritan_genesis_{training_type}'
-
-    isExist = os.path.exists(eval_path)
-    if not isExist:
-        os.makedirs(eval_path)
-
-    with open(f'{eval_path}/results_{evaluation_file_name}.txt', 'w') as f:
-        test_len = len(evaluation_data)
-        for i in range(test_len):
-            predicted = translate(loaded_transf.to(device), evaluation_data[i]['encoded_text'].to(device),
-                                  OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX)
-            indices = str(evaluation_data[i]['indices'])
-            text = evaluation_data[i]['text']
-            f.write(f'Raw Text {text}\n')
-            f.write(f'Predicted {predicted}\n')
-            f.write(f'Indices {indices}\n')
