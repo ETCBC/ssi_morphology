@@ -2,7 +2,7 @@
 This repository contains code and data for the OpenSSI Hebrew/Syriac morphology project of the [Netherlands eScience Center](https://www.esciencecenter.nl/) and the [Eep Talstra Centre for Bible and Computer (ETCBC)](www.etcbc.nl)) of the [Faculty of Religion and Theology, Vrije Universiteit](https://frt.vu.nl/nl/index.aspx) entitled “Morphological Parser for Inflectional Languages Using Deep Learning”. The project is based on the experience that has been built up in more than four decades of the computational linguistic analysis of the Hebrew Bible at the Eep Talstra Centre for Bible and Computer (ETCBC) and some of the unique aspects of the encoding of the ETCBC linguistic database of the Hebrew Bible. These unique aspects do justice to the fact that Biblical Hebrew, like many other Semitic languages, is an inflectional language with a rich morphology. What can be said with one word in Biblical Hebrew sometimes needs five or six words in an English translation. Therefore, to add linguistic annotations to a text, it is better to encode the smaller parts of a word (morphemes) rather than the complete words (as is usually done in, e.g., the preparation of English or Dutch text corpora). This, however, is very labour-intensive. The new project will endeavour to use Machine Learning to automate this process for Hebrew and Syriac texts.
 
 # Dependencies
-The only dependency is Pytorch 1.11.0 (see also requirements.txt).
+The dependencies are Pytorch, Scikit Learn, Tensorvoard and python-Levenshtein (see also requirements.txt).
 It works best if you use a GPU.
 
 # Data
