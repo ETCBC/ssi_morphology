@@ -1,5 +1,10 @@
 """Read and prepare new data on which a model can make predictions."""
 
+import json
+import os
+
+from model_transformer import Seq2SeqTransformer
+
 class CustomDataReader:
     def __init__(self, input_filename, seq_len):
 
@@ -14,9 +19,12 @@ class CustomDataReader:
         self.make_sequences()
 
     def import_data(self):
-        with open(self.input_filename, 'r') as f:
-            return f.readlines()
-
+        try:
+            with open(self.input_filename, 'r') as f:
+                return f.readlines()
+        except FileNotFoundError:
+            print('Input file missing!')
+            
     def read_data(self):
         word_id = 0
         for i in range(len(self.input_verses)):
@@ -40,7 +48,8 @@ class CustomDataReader:
                 idx_list = []
         if idx_list:
             self.prepared_data[tuple(idx_list)] = ' '.join(word_list)
-            
+
+
 class HebrewWordsNewText(Dataset):
     """A Pytorch wrapper around the hebrew bible text. Processed per word."""
 
@@ -75,5 +84,56 @@ class HebrewWordsNewText(Dataset):
                 "encoded_text": encode_string(text, self.INPUT_WORD_TO_IDX, add_sos=False, add_eos=True),
                 "indices": self.word_indices[idx]
                 }
-
         return sample
+        
+        
+class ModelImporter:
+    def __init__(self):
+        self.pth = '../new_data'
+        self.folder_name = None
+        self.config_file_name = None
+        self.model_name = None
+        
+    def get_file_names(self):
+        files_and_folders = os.listdir(self.pth)
+        self.folder_name = [f_name for f_name in files_and_folders if f_name.startswith('MODEL_')][0]
+        model_and_config_file = os.listdir(os.path.join(self.pth, self.folder_name))
+        
+        asset len(model_and_config_file)
+        
+        self.config_file_name = [f_name for f_name in model_and_config_file if f_name.startswith('model_config')][0]
+        self.model_name = [f_name for f_name in model_and_config_file if f_name.startswith('seq2seq_')][0]
+        
+    def import_model_config(self):
+        try:
+            with open(os.path.join(pth, self_folder_name, self.config_file_name)) as config_json:
+                model_config_data = json.load(config_json)
+        except FileNotFoundError:
+            print('Model config file not found!')
+        return model_config_data
+        
+    def load_model(self, config):
+        try:
+            loaded_transf = Seq2SeqTransformer(config['num_encoder_layers'], 
+                                               config['num_decoder_layers'], 
+                                               config['emb_size'],
+                                               config['nhead'], 
+                                               config['src_vocab_size'], 
+                                               config['tgt_vocab_size'], 
+                                               config['ffn_hid_dim']
+                                               )
+            loaded_transf.load_state_dict(torch.load(os.path.join(pth, self_folder_name, self.model_name)))
+        except FileNotFoundError:
+            print('Model file not found!')
+        return loaded_transf
+        
+        
+model_importer = ModelImporter()
+model_importer.get_file_names()
+model_config = model_importer.import_model_config()
+transformer_model = model_importer.load_model(model_config)
+
+seq_len = model_config['seq_len']
+
+#input_filename komt uit cl argument!
+new_data = CustomDataReader(input_filename, seq_len)
