@@ -116,8 +116,15 @@ class PipeLine:
         The configuration is needed if one wants to make predictions on new data.
         """
         model_config = {'seq_len': self.length,
+                        'num_encoder_layers': self.nel,
+                        'num_decoder_layers': self.ndl,
+                        'emb_size': self.emb,
+                        'nhead': self.nh,
+                        'ffn_hid_dim': self.ffn,
                         'input_w2idx': self.INPUT_WORD_TO_IDX,
-                        'output_w2idx': self.OUTPUT_WORD_TO_IDX
+                        'output_w2idx': self.OUTPUT_WORD_TO_IDX,
+                        'src_vocab_size': len(self.INPUT_WORD_TO_IDX),
+                        'tgt_vocab_size': len(tgt_vocab_size)
         }
         config_name = 'model_config' + self.model_name + '.json'
         
