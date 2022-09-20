@@ -1,5 +1,10 @@
 {
     "seq_len": 2,
+    "num_encoder_layers": 3,
+    "num_decoder_layers": 3,
+    "emb_size": 512,
+    "nhead": 8,
+    "ffn_hid_dim": 512,
     "input_w2idx": {
         "PAD": 0,
         "SOS": 1,
@@ -74,7 +79,8 @@
         "u": 41,
         "S": 42,
         "p": 43,
-        "o": 44,
-        "@": 45
-    }
+        "o": 44
+    },
+    "src_vocab_size": 29,
+    "tgt_vocab_size": 47
 }
