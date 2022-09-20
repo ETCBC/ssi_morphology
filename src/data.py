@@ -27,7 +27,7 @@ from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
-from config import device, MC_PREFIXES, PAD_IDX, SOS_token, EOS_token
+from config import device, MC_PREFIXES, PAD_IDX, SOS_token, EOS_token, TRAIN_DATA_FOLDER
 
 
 class DataReader:
@@ -44,8 +44,8 @@ class DataReader:
                  INPUT_WORD_TO_IDX: dict, 
                  OUTPUT_WORD_TO_IDX: dict):
                     
-        self.input_filename = os.path.join("../data", input_filename)
-        self.output_filename = os.path.join("../data", output_filename)
+        self.input_filename = os.path.join(TRAIN_DATA_FOLDER, input_filename)
+        self.output_filename = os.path.join(TRAIN_DATA_FOLDER, output_filename)
         self.sequence_length = sequence_length
         self.val_plus_test_size = val_plus_test_size
         self.INPUT_WORD_TO_IDX = INPUT_WORD_TO_IDX
@@ -54,13 +54,15 @@ class DataReader:
         try:
             with open(self.input_filename, 'r') as f:
                 input_verses = f.readlines()
-        except FileNotFoundError:
+        except FileNotFoundError as err:
             print('Input file missing!')
+            print(err)
         try:
             with open(self.output_filename, 'r') as f:
                 output_verses = f.readlines()
-        except FileNotFoundError:
+        except FileNotFoundError as err:
             print('Output file missing!')
+            print(err)
 
         assert len(input_verses) == len(output_verses)
 

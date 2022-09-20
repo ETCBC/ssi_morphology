@@ -9,8 +9,8 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from enums import TrainingType
-from pipeline import PipeLine
-from pipeline_predict import PipelinePredict
+from pipeline import PipeLineTrain
+from pipeline_predict import PipeLinePredict
 from utils import str2bool
 
 from config import PAD_IDX, SOS_token, EOS_token, MODEL_PATH, EVALUATION_RESULTS_PATH

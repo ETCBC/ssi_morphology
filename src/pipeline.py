@@ -135,7 +135,7 @@ class PipeLineTrain:
         pth = os.path.join(self.model_path, model_folder)
         if not os.path.exists(pth):
             os.makedirs(pth)
-        self.model_path_full = os.path.join(pth, self.model_name)
+        self.model_path_full = os.path.join(pth, self.model_name.rstrip('.pth'))
         with open(os.path.join(pth, config_name), 'w') as json_file:
             json.dump(model_config, json_file, indent=4)
         torch.save(trained_model.state_dict(), self.model_path_full)

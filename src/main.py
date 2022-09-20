@@ -64,7 +64,7 @@ def main(args):
     parser.add_argument("-ep", metavar="epochs", help="Specify the number of training epochs", type=int, nargs='?')
     parser.add_argument("-lr", metavar="learning_rate", help="Specify the learning rate", type=float, nargs='?')
     
-    # Arguments for second (Syriac) dataset.
+    # Arguments for training second (Syriac) dataset.
     parser.add_argument("-i2", metavar="input_filename2", help="Please specificy the second input datafile in the folder data", type=str, default='', nargs='?')
     parser.add_argument("-o2", metavar="output_filename2", help="Please specificy the second output datafile in the folder data", type=str, default='', nargs='?')
     parser.add_argument("-ep2", metavar="epochs_syr", help="Specify the number of training epochs of syriac", type=int, default=0, nargs='?')
@@ -79,7 +79,7 @@ def main(args):
     parser.add_argument("-b", metavar="batch_size", help="Optional: batch size during training", type=int, default=128, nargs='?')
     parser.add_argument("-wd", metavar="weight_decay", help="Optional: weight decay passed to optimizer", type=float, default=0.0, nargs='?')
     
-    # Evaluate on test set or not.
+    # Evaluate on test set or not after training.
     parser.add_argument("-et", metavar="eval_test", help="Optional: evaluate at the end on test set (True) or not (False)", type=str2bool, const=True, default=False, nargs='?')
 
     args = parser.parse_args()
