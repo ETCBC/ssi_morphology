@@ -7,7 +7,7 @@ import os
 
 import torch
 
-from config import 
+from config import PREDICTION_DATA_FOLDER
 from data import encode_string
 from model_transformer import Seq2SeqTransformer
 import yaml
@@ -30,7 +30,7 @@ class NewDataReader:
 
     def import_data(self):
         try:
-            with open(os.path.join('../new_data', self.input_filename), 'r') as f:
+            with open(os.path.join(PREDICTION_DATA_FOLDER, self.input_filename), 'r') as f:
                 return f.readlines()
         except FileNotFoundError:
             print('Input file missing!')

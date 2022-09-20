@@ -1,13 +1,12 @@
 """Read and prepare new data on which a model can make predictions."""
 
-from torch.utils.data import Dataset
-
 import json
 import os
 
+from torch.utils.data import Dataset
 import torch
 
-from config import PREDICTION_DATA_FOLDER
+from config import PREDICTION_DATA_FOLDER, MODEL_PATH
 from data import encode_string
 from model_transformer import Seq2SeqTransformer
 import yaml
@@ -105,7 +104,6 @@ class ConfigParser:
     This yaml file contains
     """
     def __init__(self, yaml_file_name):
-        self.pth = '../new_data'
         self.yaml_file_name = yaml_file_name 
         self.parsed_yaml = self.parse_yaml()
         self.model_folder = None
@@ -191,7 +189,7 @@ class ModelImporter:
                                                self.tgt_vocab_size, 
                                                self.ffn_hid_dim
                                                )
-            loaded_transformer.load_state_dict(torch.load(os.path.join('../transformer_models', self.folder_name, self.model_name)))
+            loaded_transformer.load_state_dict(torch.load(os.path.join(MODEL_PATH, self.folder_name, self.model_name)))
             return loaded_transformer
         except FileNotFoundError:
             print('Model file not found!')
