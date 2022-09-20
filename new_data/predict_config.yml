@@ -1,0 +1,5 @@
+model_info:
+    folder: MODEL_t-in_con_t-out_ONE_DATASET
+    model_config: model_configseq2seq_2seqlen_0.0001lr_2_0epochs_512embedsize_8nhead_3nenclayers_3numdeclayers_transformer.pth.json
+    model: seq2seq_2seqlen_0.0001lr_2_0epochs_512embedsize_8nhead_3nenclayers_3numdeclayers_transformer.pth
+new_data: SP_input

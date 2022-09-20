@@ -8,7 +8,7 @@ from data import collate_transformer_fn, DataMerger, DataReader, HebrewWords
 from transformer_train_fns import initialize_transformer_model, train_transformer
 from evaluate_transformer import evaluate_transformer_model
 
-class PipeLine:
+class PipeLineTrain:
     def __init__(self, 
                  input_file: str, 
                  output_file: str, 
@@ -116,8 +116,15 @@ class PipeLine:
         The configuration is needed if one wants to make predictions on new data.
         """
         model_config = {'seq_len': self.length,
+                        'num_encoder_layers': self.nel,
+                        'num_decoder_layers': self.ndl,
+                        'emb_size': self.emb,
+                        'nhead': self.nh,
+                        'ffn_hid_dim': self.ffn,
                         'input_w2idx': self.INPUT_WORD_TO_IDX,
-                        'output_w2idx': self.OUTPUT_WORD_TO_IDX
+                        'output_w2idx': self.OUTPUT_WORD_TO_IDX,
+                        'src_vocab_size': len(self.INPUT_WORD_TO_IDX),
+                        'tgt_vocab_size': len(self.OUTPUT_WORD_TO_IDX)
         }
         config_name = 'model_config' + self.model_name + '.json'
         

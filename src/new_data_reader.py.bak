@@ -1,11 +1,18 @@
 """Read and prepare new data on which a model can make predictions."""
 
+from torch.utils.data import Dataset
+
 import json
 import os
 
-from model_transformer import Seq2SeqTransformer
+import torch
 
-class CustomDataReader:
+from data import encode_string
+from model_transformer import Seq2SeqTransformer
+import yaml
+
+class NewDataReader:
+    """"""
     def __init__(self, input_filename, seq_len):
 
         self.input_filename = input_filename
@@ -20,7 +27,7 @@ class CustomDataReader:
 
     def import_data(self):
         try:
-            with open(self.input_filename, 'r') as f:
+            with open(os.path.join('../new_data', self.input_filename), 'r') as f:
                 return f.readlines()
         except FileNotFoundError:
             print('Input file missing!')
@@ -70,6 +77,7 @@ class HebrewWordsNewText(Dataset):
         self.word_texts = list(data.values())
         self.INPUT_WORD_TO_IDX = INPUT_WORD_TO_IDX
         self.OUTPUT_WORD_TO_IDX = OUTPUT_WORD_TO_IDX
+        self.OUTPUT_IDX_TO_WORD = {v:k for k,v in self.OUTPUT_WORD_TO_IDX.items()}
 
     def __len__(self):
         return len(self.word_indices)
@@ -87,48 +95,103 @@ class HebrewWordsNewText(Dataset):
         return sample
         
         
-class ModelImporter:
-    def __init__(self):
+class ConfigParser:
+    """"""
+    def __init__(self, yaml_file_name):
         self.pth = '../new_data'
-        self.folder_name = None
-        self.config_file_name = None
+        self.yaml_file_name = yaml_file_name 
+        self.parsed_yaml = self.parse_yaml()
+        self.model_folder = None
+        self.model_config_file_name = None
         self.model_name = None
         
+        self.new_data_file = None
+        
+        self.get_file_names()
+        self.model_config_data = self.import_model_config()
+        
+    def parse_yaml(self):
+        try:
+            with open(os.path.join(self.pth, self.yaml_file_name), 'r') as f:
+                parsed_yaml=yaml.safe_load(f)
+            return parsed_yaml
+        except FileNotFoundError as err:
+            print('No Yaml file found')
+            print(err)
+    
     def get_file_names(self):
-        files_and_folders = os.listdir(self.pth)
-        self.folder_name = [f_name for f_name in files_and_folders if f_name.startswith('MODEL_')][0]
-        model_and_config_file = os.listdir(os.path.join(self.pth, self.folder_name))
-        
-        asset len(model_and_config_file)
-        
-        self.config_file_name = [f_name for f_name in model_and_config_file if f_name.startswith('model_config')][0]
-        self.model_name = [f_name for f_name in model_and_config_file if f_name.startswith('seq2seq_')][0]
+        try:
+            model_info = self.parsed_yaml['model_info']
+            self.model_folder = model_info['folder']
+            self.model_config_file_name = model_info['model_config']
+            self.model_name = model_info['model']
+        except KeyError as err:
+            print()
+            print(err)
+        try:
+            self.new_data_file = self.parsed_yaml['new_data']
+        except KeyError as err:
+            print('No new data file in yaml')
+            print(err)
         
     def import_model_config(self):
         try:
-            with open(os.path.join(pth, self_folder_name, self.config_file_name)) as config_json:
+            with open(os.path.join('../transformer_models', self.model_folder, self.model_config_file_name)) as config_json:
                 model_config_data = json.load(config_json)
-        except FileNotFoundError:
+            return model_config_data
+        except FileNotFoundError as err:
             print('Model config file not found!')
-        return model_config_data
+            print(err)
+  
+class ModelImporter:
+    """"""
+    def __init__(self, config, pth, folder_name, model_name):
+        self.config = config
+        self.pth = pth
+        self.folder_name = folder_name
+        self.model_name = model_name
+        
+        self.num_encoder_layers = None
+        self.num_decoder_layers = None
+        self.emb_size = None
+        self.nhead = None
+        self.src_vocab_size = None
+        self.tgt_vocab_size = None
+        self.ffn_hid_dim = None
+        
+        self.get_model_hyperparameters()
+        self.loaded_transformer = self.load_model(self.config)
+        print('transf', type(self.loaded_transformer))
+        
+    def get_model_hyperparameters(self):
+        try:
+            self.num_encoder_layers = self.config['num_encoder_layers']
+            self.num_decoder_layers = self.config['num_decoder_layers']
+            self.emb_size = self.config['emb_size']
+            self.nhead = self.config['nhead']
+            self.src_vocab_size = self.config['src_vocab_size']
+            self.tgt_vocab_size = self.config['tgt_vocab_size']
+            self.ffn_hid_dim = self.config['ffn_hid_dim']
+        except KeyError as err:
+            print('Cannot find the model hyperparaqmeters in the config')
+            print(err)
         
     def load_model(self, config):
         try:
-            loaded_transf = Seq2SeqTransformer(config['num_encoder_layers'], 
-                                               config['num_decoder_layers'], 
-                                               config['emb_size'],
-                                               config['nhead'], 
-                                               config['src_vocab_size'], 
-                                               config['tgt_vocab_size'], 
-                                               config['ffn_hid_dim']
+            print('TRY TO LOAD MODEL')
+            loaded_transformer = Seq2SeqTransformer(self.num_encoder_layers, 
+                                               self.num_decoder_layers, 
+                                               self.emb_size,
+                                               self.nhead, 
+                                               self.src_vocab_size, 
+                                               self.tgt_vocab_size, 
+                                               self.ffn_hid_dim
                                                )
-            loaded_transf.load_state_dict(torch.load(os.path.join(pth, self_folder_name, self.model_name)))
+            print('HI THERE')
+            loaded_transformer.load_state_dict(torch.load(os.path.join('../transformer_models', self.folder_name, self.model_name)))
+            print('TRANSFORMERTYPE', type(loaded_transformer))
+            return loaded_transformer
         except FileNotFoundError:
             print('Model file not found!')
-        return loaded_transf
+            print(os.path.join(self.pth, self.folder_name, self.model_name))
         
-        
-model_importer = ModelImporter()
-model_importer.get_file_names()
-model_config = model_importer.import_model_config()
-transformer_model = model_importer.load_model(model_config)

@@ -8,7 +8,7 @@ from data import collate_transformer_fn, DataMerger, DataReader, HebrewWords
 from transformer_train_fns import initialize_transformer_model, train_transformer
 from evaluate_transformer import evaluate_transformer_model
 
-class PipeLine:
+class PipeLineTrain:
     def __init__(self, 
                  input_file: str, 
                  output_file: str, 
@@ -123,8 +123,8 @@ class PipeLine:
                         'ffn_hid_dim': self.ffn,
                         'input_w2idx': self.INPUT_WORD_TO_IDX,
                         'output_w2idx': self.OUTPUT_WORD_TO_IDX,
-                        'src_vocab_size': len(self.INPUT_WORD_TO_IDX),
-                        'tgt_vocab_size': len(tgt_vocab_size)
+                        'src_vocab_size': self.src_vocab_size,
+                        'tgt_vocab_size': self.tgt_vocab_size
         }
         config_name = 'model_config' + self.model_name + '.json'
         
