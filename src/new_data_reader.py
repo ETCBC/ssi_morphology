@@ -7,12 +7,15 @@ import os
 
 import torch
 
+from config import PREDICTION_DATA_FOLDER
 from data import encode_string
 from model_transformer import Seq2SeqTransformer
 import yaml
 
 class NewDataReader:
-    """"""
+    """
+    Read new data from file and make sequences.
+    """
     def __init__(self, input_filename, seq_len):
 
         self.input_filename = input_filename
@@ -27,7 +30,7 @@ class NewDataReader:
 
     def import_data(self):
         try:
-            with open(os.path.join('../new_data', self.input_filename), 'r') as f:
+            with open(os.path.join(PREDICTION_DATA_FOLDER, self.input_filename), 'r') as f:
                 return f.readlines()
         except FileNotFoundError:
             print('Input file missing!')
@@ -58,7 +61,7 @@ class NewDataReader:
 
 
 class HebrewWordsNewText(Dataset):
-    """A Pytorch wrapper around the hebrew bible text. Processed per word."""
+    """A Pytorch wrapper around text. Processed per sequence."""
 
     def __init__(self, data: dict,
                   INPUT_WORD_TO_IDX: dict, OUTPUT_WORD_TO_IDX: dict):
@@ -96,7 +99,11 @@ class HebrewWordsNewText(Dataset):
         
         
 class ConfigParser:
-    """"""
+    """
+    Parser for configuration file for predictions
+    on new data.
+    This yaml file contains
+    """
     def __init__(self, yaml_file_name):
         self.pth = '../new_data'
         self.yaml_file_name = yaml_file_name 
@@ -104,7 +111,6 @@ class ConfigParser:
         self.model_folder = None
         self.model_config_file_name = None
         self.model_name = None
-        
         self.new_data_file = None
         
         self.get_file_names()

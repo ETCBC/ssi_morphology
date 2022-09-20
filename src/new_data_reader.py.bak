@@ -7,12 +7,15 @@ import os
 
 import torch
 
+from config import 
 from data import encode_string
 from model_transformer import Seq2SeqTransformer
 import yaml
 
 class NewDataReader:
-    """"""
+    """
+    Read new data from file and make sequences.
+    """
     def __init__(self, input_filename, seq_len):
 
         self.input_filename = input_filename
@@ -58,7 +61,7 @@ class NewDataReader:
 
 
 class HebrewWordsNewText(Dataset):
-    """A Pytorch wrapper around the hebrew bible text. Processed per word."""
+    """A Pytorch wrapper around text. Processed per sequence."""
 
     def __init__(self, data: dict,
                   INPUT_WORD_TO_IDX: dict, OUTPUT_WORD_TO_IDX: dict):
@@ -96,7 +99,11 @@ class HebrewWordsNewText(Dataset):
         
         
 class ConfigParser:
-    """"""
+    """
+    Parser for configuration file for predictions
+    on new data.
+    This yaml file contains
+    """
     def __init__(self, yaml_file_name):
         self.pth = '../new_data'
         self.yaml_file_name = yaml_file_name 
@@ -104,7 +111,6 @@ class ConfigParser:
         self.model_folder = None
         self.model_config_file_name = None
         self.model_name = None
-        
         self.new_data_file = None
         
         self.get_file_names()
@@ -161,7 +167,6 @@ class ModelImporter:
         
         self.get_model_hyperparameters()
         self.loaded_transformer = self.load_model(self.config)
-        print('transf', type(self.loaded_transformer))
         
     def get_model_hyperparameters(self):
         try:
@@ -178,7 +183,6 @@ class ModelImporter:
         
     def load_model(self, config):
         try:
-            print('TRY TO LOAD MODEL')
             loaded_transformer = Seq2SeqTransformer(self.num_encoder_layers, 
                                                self.num_decoder_layers, 
                                                self.emb_size,
@@ -187,9 +191,7 @@ class ModelImporter:
                                                self.tgt_vocab_size, 
                                                self.ffn_hid_dim
                                                )
-            print('HI THERE')
             loaded_transformer.load_state_dict(torch.load(os.path.join('../transformer_models', self.folder_name, self.model_name)))
-            print('TRANSFORMERTYPE', type(loaded_transformer))
             return loaded_transformer
         except FileNotFoundError:
             print('Model file not found!')

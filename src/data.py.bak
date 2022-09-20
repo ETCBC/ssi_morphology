@@ -51,10 +51,16 @@ class DataReader:
         self.INPUT_WORD_TO_IDX = INPUT_WORD_TO_IDX
         self.OUTPUT_WORD_TO_IDX = OUTPUT_WORD_TO_IDX
         
-        with open(self.input_filename, 'r') as f:
-            input_verses = f.readlines()
-        with open(self.output_filename, 'r') as f:
-            output_verses = f.readlines()
+        try:
+            with open(self.input_filename, 'r') as f:
+                input_verses = f.readlines()
+        except FileNotFoundError:
+            print('Input file missing!')
+        try:
+            with open(self.output_filename, 'r') as f:
+                output_verses = f.readlines()
+        except FileNotFoundError:
+            print('Output file missing!')
 
         assert len(input_verses) == len(output_verses)
 

@@ -23,7 +23,6 @@ EOS_token = 2
 
 # Data folders
 TRAIN_DATA_FOLDER = '../data'
-PREDICTION_DATA_FOLDER = '../new_data'
 
 # paths for storing models and data.
 MODEL_PATH = '../transformer_models'
