@@ -26,15 +26,16 @@ There are three different ways you can train a model:
 You can train a model which can parse Hebrew or Syriac morphology. It works best if you use a GPU. A minimal input would be:
 
 Train model on vocalized Hebrew input data:
-- python main.py -i=t-in_voc -o=t-out -ep=2 -l=5 -lr=0.0001
+- python main.py -mo=train -i=t-in_voc -o=t-out -ep=2 -l=5 -lr=0.0001
 
 Train model on unvocalized data:
-- python main.py -i=t-in_con -o=t-out -ep=2 -l=5 -lr=0.0001
+- python main.py -mo=train -i=t-in_con -o=t-out -ep=2 -l=5 -lr=0.0001
 
 Train model on Syriac data:
-- python main.py -i=s-in -o=s-out -ep=2 -l=5 -lr=0.0001
+- python main.py -mo=train -i=s-in -o=s-out -ep=2 -l=5 -lr=0.0001
 
 The required command line arguments are:
+- mo Mode, can be train or predict.
 - i Filename of file with input sequences.
 - o Filename of file with output sequences.
 - l Number of graphical units in input sequence, e.g, "BR>CJT" has length 1, "BR>CJT BR>" has length 2, etc.
@@ -43,7 +44,7 @@ The required command line arguments are:
 
 ### 2. Train on two datasets (data are mixed)
 It is also possible to train a model on Hebrew and Syriac data together. Here, data are imported and mixed before training takes place.
-- python main.py -i=t-in_voc -o=t-out -i2=s-in -o2=s-out -ep=2 -l=5 -lr=0.0001
+- python main.py -mo=train -i=t-in_voc -o=t-out -i2=s-in -o2=s-out -ep=2 -l=5 -lr=0.0001
 
 There are two extra arguments:
 - i2 the second input file.
@@ -51,7 +52,7 @@ There are two extra arguments:
 
 ### 3. Train on two datasets (sequentially)
 You can also apply Transfer Learning. With Transfer Learning, you will first train the model on Hebrew data, after which you continue training the model on Syriac data.
-- python main.py -i=t-in_voc -o=t-out -i2=s-in -o2=s-out -ep=2 -ep2=2 -l=5 -lr=0.0001
+- python main.py -mo=train -i=t-in_voc -o=t-out -i2=s-in -o2=s-out -ep=2 -ep2=2 -l=5 -lr=0.0001
 
 There is an extra command argument:
 
