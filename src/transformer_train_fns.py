@@ -1,27 +1,25 @@
-from config import device
-from data import decode_string
-from signal import signal, SIGINT, SIG_DFL
 import time
 
+from Levenshtein import distance
+from numpy import array
 import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
 
-from model_transformer import Seq2SeqTransformer
-
 from config import check_abort, abort_handler
+from config import device
+from data import decode_string
+from model_transformer import Seq2SeqTransformer
+from signal import signal, SIGINT, SIG_DFL
 
 def initialize_transformer_model(num_encoder_layers, num_decoder_layers, emb_size, nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim, dropout):
 
     transformer = Seq2SeqTransformer(num_encoder_layers, num_decoder_layers, emb_size, 
                                  nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim, dropout)
-
     for p in transformer.parameters():
         if p.dim() > 1:
             nn.init.xavier_uniform_(p)
-
     transformer = transformer.to(device)
-
     return transformer
 
 
@@ -51,9 +49,7 @@ class TrainingSession():
       self.trainloader = None
       self.validloader = None
       self.PAD_IDX = None
-
-
-from Levenshtein import distance
+      
 
 def edit_distance(t1, t2):
     o = ord(' ')
@@ -61,7 +57,6 @@ def edit_distance(t1, t2):
     s2 = ''.join([chr(o + i) for i in t2])
     return distance(s1, s2)
 
-from numpy import array
 
 def accuracy(target, labels):
     tgt_out = labels[1:, :]

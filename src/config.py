@@ -21,9 +21,11 @@ PAD_IDX = 0
 SOS_token = 1
 EOS_token = 2
 
-# paths for storing models and data.
-MODEL_PATH = '../transformer_models'
+# Data and models folders
+TRAIN_DATA_FOLDER = '../data'
+PREDICTION_DATA_FOLDER = '../new_data'
 EVALUATION_RESULTS_PATH = '../evaluation_results_transformer'
+MODEL_PATH = '../transformer_models'
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 abort = False  # Global variable to catch Ctrl-C
