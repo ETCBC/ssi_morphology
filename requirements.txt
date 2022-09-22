@@ -1,4 +1,9 @@
 python-Levenshtein==0.12.2
 scikit-learn==1.1.2
 tensorboard==2.10.0
+<<<<<<< HEAD
 torch==1.11.0
+=======
+torch==1.11.0
+PyYAML==6.0
+>>>>>>> custom_data

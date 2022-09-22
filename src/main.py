@@ -9,7 +9,8 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from enums import TrainingType
-from pipeline import PipeLine
+from pipeline import PipeLineTrain
+from pipeline_predict import PipeLinePredict
 from utils import str2bool
 
 from config import PAD_IDX, SOS_token, EOS_token, MODEL_PATH, EVALUATION_RESULTS_PATH
@@ -17,7 +18,7 @@ from config import PAD_IDX, SOS_token, EOS_token, MODEL_PATH, EVALUATION_RESULTS
 
 def main(args):
     """
-    Train a Transformer model.
+    Train a Transformer model or make predictions on new data with a trained model.
     
     Three different scenarios are possible, based on the use of the command line arguments. One uses
     -i, -o, and -ep                  -- The model is trained with one input (-i) and one output (-o) file and -ep epochs.
@@ -51,13 +52,19 @@ def main(args):
     """
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", metavar="input_filename", help="Please specificy the input datafile in the folder data", type=str)
-    parser.add_argument("-o", metavar="output_filename", help="Please specificy the output datafile in the folder data", type=str)
-    parser.add_argument("-l", metavar="input_seq_len", help="Designate the number of words in one input string", type=int)
-    parser.add_argument("-ep", metavar="epochs", help="Specify the number of training epochs", type=int)
-    parser.add_argument("-lr", metavar="learning_rate", help="Specify the learning rate", type=float)
+    parser.add_argument("-mo", metavar="mode", help="Is the mode training a new model or predicting with trained model. Can be 'train' or 'predict", type=str)
     
-    # Arguments for second (Syriac) dataset
+    # Argument required for predict mode.
+    parser.add_argument("-pcf", metavar="predict_config_file", help="Name of yaml file for predictions", type=str, nargs='?')
+    
+    # Arguments required for training mode.
+    parser.add_argument("-i", metavar="input_filename", help="Please specificy the input datafile in the folder data", type=str, nargs='?')
+    parser.add_argument("-o", metavar="output_filename", help="Please specificy the output datafile in the folder data", type=str, nargs='?')
+    parser.add_argument("-l", metavar="input_seq_len", help="Designate the number of words in one input string", type=int, nargs='?')
+    parser.add_argument("-ep", metavar="epochs", help="Specify the number of training epochs", type=int, nargs='?')
+    parser.add_argument("-lr", metavar="learning_rate", help="Specify the learning rate", type=float, nargs='?')
+    
+    # Arguments for training second (Syriac) dataset.
     parser.add_argument("-i2", metavar="input_filename2", help="Please specificy the second input datafile in the folder data", type=str, default='', nargs='?')
     parser.add_argument("-o2", metavar="output_filename2", help="Please specificy the second output datafile in the folder data", type=str, default='', nargs='?')
     parser.add_argument("-ep2", metavar="epochs_syr", help="Specify the number of training epochs of syriac", type=int, default=0, nargs='?')
@@ -72,38 +79,49 @@ def main(args):
     parser.add_argument("-b", metavar="batch_size", help="Optional: batch size during training", type=int, default=128, nargs='?')
     parser.add_argument("-wd", metavar="weight_decay", help="Optional: weight decay passed to optimizer", type=float, default=0.0, nargs='?')
     
-    # Evaluate on test set or not
+    # Evaluate on test set or not after training.
     parser.add_argument("-et", metavar="eval_test", help="Optional: evaluate at the end on test set (True) or not (False)", type=str2bool, const=True, default=False, nargs='?')
 
     args = parser.parse_args()
     
+    assert args.mo
     
-    if args.i2 and args.o2 and args.ep2:
-        training_type = TrainingType.TWO_DATASETS_SEQUENTIALLY
-    elif args.i2 and args.o2:
-        training_type = TrainingType.TWO_DATASETS_SIMULTANEOUSLY
-    elif args.i and args.o:
-        training_type = TrainingType.ONE_DATASET
+    if args.mo == 'predict':
+        assert args.pcf
+    elif args.mo == 'train':
+        assert args.i
+        assert args.o
+        assert args.l
+        assert args.ep
+        assert args.lr
+    
+    if args.mo == 'predict':
+        pipeline_predict = PipeLinePredict(args.pcf)
+    
+    elif args.mo == 'train':
+        if args.i2 and args.o2 and args.ep2:
+            training_type = TrainingType.TWO_DATASETS_SEQUENTIALLY
+        elif args.i2 and args.o2:
+            training_type = TrainingType.TWO_DATASETS_SIMULTANEOUSLY
+        elif args.i and args.o:
+            training_type = TrainingType.ONE_DATASET
         
-    assert training_type
-    assert args.l
-    assert args.ep
-    assert args.lr
+        assert training_type
+
     
-    
-    INPUT_WORD_TO_IDX = {
+        INPUT_WORD_TO_IDX = {
                          'PAD': PAD_IDX,
                          'SOS': SOS_token,
                          'EOS': EOS_token
                         }
 
-    OUTPUT_WORD_TO_IDX = {
+        OUTPUT_WORD_TO_IDX = {
                           'PAD': PAD_IDX,
                           'SOS': SOS_token,
                           'EOS': EOS_token
                          }
     
-    pipeline = PipeLine(args.i, 
+        pipeline = PipeLineTrain(args.i, 
                         args.o, 
                         args.l, 
                         INPUT_WORD_TO_IDX, 
@@ -125,41 +143,42 @@ def main(args):
                         )
 
 
-    if training_type == TrainingType.TWO_DATASETS_SIMULTANEOUSLY:
-        train_data_X, train_data_y, val_data_X, val_data_y = pipeline.merge_datasets()
-        hebrew_train, hebrew_val, test_set = pipeline.make_pytorch_merged_datasets(train_data_X, 
+        if training_type == TrainingType.TWO_DATASETS_SIMULTANEOUSLY:
+            train_data_X, train_data_y, val_data_X, val_data_y = pipeline.merge_datasets()
+            hebrew_train, hebrew_val, test_set = pipeline.make_pytorch_merged_datasets(train_data_X, 
                                                                                    train_data_y, 
                                                                                    val_data_X, 
                                                                                    val_data_y, 
                                                                                    pipeline.data_set_two.X_test, 
                                                                                    pipeline.data_set_two.y_test)
-    elif training_type == TrainingType.TWO_DATASETS_SEQUENTIALLY:
-        hebrew_train, hebrew_val, _ = pipeline.make_pytorch_datasets(pipeline.data_set_one)
-        syr_train, syr_val, test_set = pipeline.make_pytorch_datasets(pipeline.data_set_two)
-    elif training_type == TrainingType.ONE_DATASET:
-        hebrew_train, hebrew_val, test_set = pipeline.make_pytorch_datasets(pipeline.data_set_one)
+        elif training_type == TrainingType.TWO_DATASETS_SEQUENTIALLY:
+            hebrew_train, hebrew_val, _ = pipeline.make_pytorch_datasets(pipeline.data_set_one)
+            syr_train, syr_val, test_set = pipeline.make_pytorch_datasets(pipeline.data_set_two)
+        elif training_type == TrainingType.ONE_DATASET:
+            hebrew_train, hebrew_val, test_set = pipeline.make_pytorch_datasets(pipeline.data_set_one)
 
-    # Train model on (first) dataset
-    train_dataloader, eval_dataloader = pipeline.make_data_loader(hebrew_train, hebrew_val)
-    transformer = pipeline.initialize_model()
-    loss_fn = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
-    optimizer = optim.Adam(transformer.parameters(), lr=args.lr, betas=(0.9, 0.98), eps=1e-9, weight_decay=args.wd)
-    trained_transformer = pipeline.train_model(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, PAD_IDX)
+        # Train model on (first) dataset
+        train_dataloader, eval_dataloader = pipeline.make_data_loader(hebrew_train, hebrew_val)
+        transformer = pipeline.initialize_model()
+        loss_fn = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
+        optimizer = optim.Adam(transformer.parameters(), lr=args.lr, betas=(0.9, 0.98), eps=1e-9, weight_decay=args.wd)
+        trained_transformer = pipeline.train_model(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, PAD_IDX)
     
-    # Save and evaluate model
-    if training_type in {TrainingType.TWO_DATASETS_SIMULTANEOUSLY, TrainingType.ONE_DATASET}:
-        pipeline.save_model(trained_transformer, training_type.name)
-        if args.et:
-            pipeline.evaluate_on_test_set(test_set, training_type.name)
+        # Save and evaluate model
+        if training_type in {TrainingType.TWO_DATASETS_SIMULTANEOUSLY, TrainingType.ONE_DATASET}:
+            pipeline.save_model(trained_transformer, training_type.name)
+            if args.et:
+                pipeline.evaluate_on_test_set(test_set, training_type.name)
          
-    # Train model on second dataset, save model and evaluate it.
-    elif training_type == TrainingType.TWO_DATASETS_SEQUENTIALLY:
-        train_dataloader_s, eval_dataloader_s = pipeline.make_data_loader(syr_train, syr_val)
-        trained_transformer = pipeline.train_model(trained_transformer, loss_fn, optimizer, train_dataloader_s, eval_dataloader_s, PAD_IDX)
-        pipeline.save_model(trained_transformer, training_type)
-        if args.et:
-            pipeline.evaluate_on_test_set(test_set, training_type.name)
+        # Train model on second dataset, save model and evaluate it.
+        elif training_type == TrainingType.TWO_DATASETS_SEQUENTIALLY:
+            train_dataloader_s, eval_dataloader_s = pipeline.make_data_loader(syr_train, syr_val)
+            trained_transformer = pipeline.train_model(trained_transformer, loss_fn, optimizer, train_dataloader_s, eval_dataloader_s, PAD_IDX)
+            pipeline.save_model(trained_transformer, training_type)
+            if args.et:
+                pipeline.evaluate_on_test_set(test_set, training_type.name)
 
 
 if __name__ == '__main__':
     main(sys.argv[1:])
+    

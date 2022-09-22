@@ -8,7 +8,7 @@ from data import collate_transformer_fn, DataMerger, DataReader, HebrewWords
 from transformer_train_fns import initialize_transformer_model, train_transformer
 from evaluate_transformer import evaluate_transformer_model
 
-class PipeLine:
+class PipeLineTrain:
     def __init__(self, 
                  input_file: str, 
                  output_file: str, 
@@ -116,19 +116,26 @@ class PipeLine:
         The configuration is needed if one wants to make predictions on new data.
         """
         model_config = {'seq_len': self.length,
+                        'num_encoder_layers': self.nel,
+                        'num_decoder_layers': self.ndl,
+                        'emb_size': self.emb,
+                        'nhead': self.nh,
+                        'ffn_hid_dim': self.ffn,
                         'input_w2idx': self.INPUT_WORD_TO_IDX,
-                        'output_w2idx': self.OUTPUT_WORD_TO_IDX
+                        'output_w2idx': self.OUTPUT_WORD_TO_IDX,
+                        'src_vocab_size': self.src_vocab_size,
+                        'tgt_vocab_size': self.tgt_vocab_size
         }
         config_name = 'model_config' + self.model_name + '.json'
         
-        model_folder = f'{self.input_file}_{self.output_file}_{training_type}'
+        model_folder = f'MODEL_{self.input_file}_{self.output_file}_{training_type}'
         if self.input_file2 and self.output_file2:
             model_folder = model_folder + f'_{self.input_file2}_{self.output_file2}'
         
         pth = os.path.join(self.model_path, model_folder)
         if not os.path.exists(pth):
             os.makedirs(pth)
-        self.model_path_full = os.path.join(pth, self.model_name)
+        self.model_path_full = os.path.join(pth, self.model_name.rstrip('.pth'))
         with open(os.path.join(pth, config_name), 'w') as json_file:
             json.dump(model_config, json_file, indent=4)
         torch.save(trained_model.state_dict(), self.model_path_full)
