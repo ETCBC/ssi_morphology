@@ -2,7 +2,7 @@
 This repository contains code and data for the OpenSSI Hebrew/Syriac morphology project of the [Netherlands eScience Center](https://www.esciencecenter.nl/) and the [Eep Talstra Centre for Bible and Computer (ETCBC)](www.etcbc.nl)) of the [Faculty of Religion and Theology, Vrije Universiteit](https://frt.vu.nl/nl/index.aspx) entitled “Morphological Parser for Inflectional Languages Using Deep Learning”. The project is based on the experience that has been built up in more than four decades of the computational linguistic analysis of the Hebrew Bible at the Eep Talstra Centre for Bible and Computer (ETCBC) and some of the unique aspects of the encoding of the ETCBC linguistic database of the Hebrew Bible. These unique aspects do justice to the fact that Biblical Hebrew, like many other Semitic languages, is an inflectional language with a rich morphology. What can be said with one word in Biblical Hebrew sometimes needs five or six words in an English translation. Therefore, to add linguistic annotations to a text, it is better to encode the smaller parts of a word (morphemes) rather than the complete words (as is usually done in, e.g., the preparation of English or Dutch text corpora). This, however, is very labour-intensive. The new project will endeavour to use Machine Learning to automate this process for Hebrew and Syriac texts.
 
 # Dependencies
-The dependencies are Pytorch, Scikit Learn, Tensorvoard PyYAML, and python-Levenshtein, which you install with:
+The dependencies are Pytorch, Scikit Learn, Tensorvoard, PyYAML, and python-Levenshtein, which you install with:
 
 `pip install -r requirements.txt`
 
@@ -78,13 +78,13 @@ You can make predictions using a trained model on new data, for which you need t
 1. A file with new data in the folder new_data.
 2. A trained model.
 3. A configuration file of the model.
-4. A YAML file in which you indicate where the new data, the model and the model configuration file can be found.
+4. A YAML file, which should be in the folder new_data, in which you indicate where the new data, the model and the model configuration file can be found.
 
 ad 1. the data file is tab separated and should consist of four columns, without a header. The columns are book, chapter, verse, and text.
 ad 2. The model should be in a subfolder in the folder transformer models.
 ad 3. The configuration file of the model is in the same folder as the model. The configuration file contains the hyperparameters needed to initialize the model. 
       Next to that, it contains the sequence length used to slice the text, and 2 dictionaries that are used to convert the input text to integers, and integers to output text.
-ad 4. The yaml file is in the folder new_data and has the following structure:
+ad 4. The YAML file has the following structure:
 
 ```
 model_info:
