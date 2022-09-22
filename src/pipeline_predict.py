@@ -1,6 +1,6 @@
 import os
 
-from config import device
+from config import device, PREDICTION_DATA_FOLDER
 from evaluate_transformer import translate
 from new_data_reader import ConfigParser, ModelImporter, NewDataReader, HebrewWordsNewText
 
@@ -16,14 +16,12 @@ class PipeLinePredict:
     
         self.make_predictions_transformer_model()
     
-    
     def parse_config(self):
         config_parser = ConfigParser(self.predict_config_file)
         return config_parser
         
     def load_model(self):
-        model_importer = ModelImporter(self.config_parser.model_config_data, 
-                                       self.config_parser.pth, 
+        model_importer = ModelImporter(self.config_parser.model_config_data,
                                        self.config_parser.model_folder, 
                                        self.config_parser.model_name)
         return model_importer
@@ -35,32 +33,31 @@ class PipeLinePredict:
                                         
     def make_new_dataset(self):
         hebrew_words_new_text = HebrewWordsNewText(self.new_data_reader.prepared_data,
+                                                   self.new_data_reader.data_ids2labels,
                                                    self.config_parser.model_config_data['input_w2idx'],
                                                    self.config_parser.model_config_data['output_w2idx'])
         return hebrew_words_new_text
         
-        
     def make_predictions_transformer_model(self):
         model = self.model_importer.loaded_transformer
         model.eval()
+        
+        new_data_file = self.config_parser.new_data_file.split('.')[0]
 
-        eval_path = f'../evaluation_results_transformer/'
-        evaluation_file_name = 'predictions_samaritan_genesis'
-
-        eval_path = eval_path + f'samaritan_genesis'
-
-        isExist = os.path.exists(eval_path)
-        if not isExist:
-            os.makedirs(eval_path)
-
-        with open(f'{eval_path}/results_{evaluation_file_name}.txt', 'w') as f:
-            test_len = len(self.new_dataset)
-            for i in range(test_len):
+        with open(f'{PREDICTION_DATA_FOLDER}/results_predictions_{new_data_file}.txt', 'w') as f:
+            for i in range(len(self.new_dataset)):
                 predicted = translate(model.to(device), self.new_dataset[i]['encoded_text'].to(device),
                                   self.new_dataset.OUTPUT_IDX_TO_WORD, 
                                   self.new_dataset.OUTPUT_WORD_TO_IDX)
-                indices = str(self.new_dataset[i]['indices'])
-                text = self.new_dataset[i]['text']
-                f.write(f'Raw Text {text}\n')
-                f.write(f'Predicted {predicted}\n')
-                f.write(f'Indices {indices}\n')
+                indices = self.new_dataset[i]['indices']
+                labels = self.new_dataset[i]['labels']
+                input_text = self.new_dataset[i]['text']
+                
+                predicted_separate_words = predicted.split()
+                input_text_separate_words = input_text.split()
+                if len(predicted_separate_words) == len(input_text_separate_words):
+                    for idx, label, input_txt, pred_txt in zip(indices, labels, input_text_separate_words, predicted_separate_words):
+                        f.write(f'{str(idx)}\t{" ".join(label)}\t{input_txt}\t{pred_txt}\n')
+                else:
+                    f.write(f'{str(indices)}\t{str(labels)}\t{text}\{predicted}\n')
+             

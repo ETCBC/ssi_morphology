@@ -55,7 +55,7 @@ def main(args):
     parser.add_argument("-mo", metavar="mode", help="Is the mode training a new model or predicting with trained model. Can be 'train' or 'predict", type=str)
     
     # Argument required for predict mode.
-    parser.add_argument("-pcf", metavar="predict_config_file", help="Name of config file for predictions", type=str, nargs='?')
+    parser.add_argument("-pcf", metavar="predict_config_file", help="Name of yaml file for predictions", type=str, nargs='?')
     
     # Arguments required for training mode.
     parser.add_argument("-i", metavar="input_filename", help="Please specificy the input datafile in the folder data", type=str, nargs='?')
