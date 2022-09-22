@@ -54,13 +54,11 @@ class DataReader:
         try:
             with open(self.input_filename, 'r') as f:
                 input_verses = f.readlines()
-                print(len(input_verses))
         except FileNotFoundError as err:
             print(err)
         try:
             with open(self.output_filename, 'r') as f:
                 output_verses = f.readlines()
-                print(len(output_verses))
         except FileNotFoundError as err:
             print(err)
 

@@ -126,7 +126,7 @@ class PipeLineTrain:
                         'src_vocab_size': self.src_vocab_size,
                         'tgt_vocab_size': self.tgt_vocab_size
         }
-        config_name = 'model_config' + self.model_name + '.json'
+        config_name = 'model_config' + self.model_name.rstrip('.pth') + '.json'
         
         model_folder = f'MODEL_{self.input_file}_{self.output_file}_{training_type}'
         if self.input_file2 and self.output_file2:
@@ -135,7 +135,7 @@ class PipeLineTrain:
         pth = os.path.join(self.model_path, model_folder)
         if not os.path.exists(pth):
             os.makedirs(pth)
-        self.model_path_full = os.path.join(pth, self.model_name.rstrip('.pth'))
+        self.model_path_full = os.path.join(pth, self.model_name)
         with open(os.path.join(pth, config_name), 'w') as json_file:
             json.dump(model_config, json_file, indent=4)
         torch.save(trained_model.state_dict(), self.model_path_full)
