@@ -36,8 +36,8 @@ class NewDataReader:
             
     def read_data(self):
         word_id = 0
-        for i in range(len(self.input_verses)):
-            bo, ch, ve, text = tuple(self.input_verses[i].strip().split('\t'))
+        for verse in self.input_verses:
+            bo, ch, ve, text = tuple(verse.strip().split('\t'))
             split_text = text.split()
 
             for word in split_text:
@@ -62,8 +62,11 @@ class NewDataReader:
 class HebrewWordsNewText(Dataset):
     """A Pytorch wrapper around text. Processed per sequence."""
 
-    def __init__(self, data: dict,
-                  INPUT_WORD_TO_IDX: dict, OUTPUT_WORD_TO_IDX: dict):
+    def __init__(self, 
+                 data: dict,
+                 data_labels: dict,
+                 INPUT_WORD_TO_IDX: dict, 
+                 OUTPUT_WORD_TO_IDX: dict):
         """
         Args:
             input_filename (str)
@@ -77,6 +80,7 @@ class HebrewWordsNewText(Dataset):
 
         self.word_indices = list(data.keys())
         self.word_texts = list(data.values())
+        self.data_labels = data_labels
         self.INPUT_WORD_TO_IDX = INPUT_WORD_TO_IDX
         self.OUTPUT_WORD_TO_IDX = OUTPUT_WORD_TO_IDX
         self.OUTPUT_IDX_TO_WORD = {v:k for k,v in self.OUTPUT_WORD_TO_IDX.items()}
@@ -90,9 +94,10 @@ class HebrewWordsNewText(Dataset):
 
         text = self.word_texts[idx]
         sample = {
-                "text": text,
-                "encoded_text": encode_string(text, self.INPUT_WORD_TO_IDX, add_sos=False, add_eos=True),
-                "indices": self.word_indices[idx]
+                'text': text,
+                'encoded_text': encode_string(text, self.INPUT_WORD_TO_IDX, add_sos=False, add_eos=True),
+                'indices': self.word_indices[idx],
+                'labels': [self.data_labels[word_idx] for word_idx in self.word_indices[idx]]
                 }
         return sample
         
@@ -101,7 +106,6 @@ class ConfigParser:
     """
     Parser for configuration file for predictions
     on new data.
-    This yaml file contains
     """
     def __init__(self, yaml_file_name):
         self.yaml_file_name = yaml_file_name 
@@ -116,7 +120,7 @@ class ConfigParser:
         
     def parse_yaml(self):
         try:
-            with open(os.path.join(self.pth, self.yaml_file_name), 'r') as f:
+            with open(os.path.join(PREDICTION_DATA_FOLDER, self.yaml_file_name), 'r') as f:
                 parsed_yaml=yaml.safe_load(f)
             return parsed_yaml
         except FileNotFoundError as err:
@@ -140,7 +144,7 @@ class ConfigParser:
         
     def import_model_config(self):
         try:
-            with open(os.path.join('../transformer_models', self.model_folder, self.model_config_file_name)) as config_json:
+            with open(os.path.join(MODEL_PATH, self.model_folder, self.model_config_file_name)) as config_json:
                 model_config_data = json.load(config_json)
             return model_config_data
         except FileNotFoundError as err:
@@ -149,9 +153,8 @@ class ConfigParser:
   
 class ModelImporter:
     """"""
-    def __init__(self, config, pth, folder_name, model_name):
+    def __init__(self, config, folder_name, model_name):
         self.config = config
-        self.pth = pth
         self.folder_name = folder_name
         self.model_name = model_name
         
@@ -193,5 +196,5 @@ class ModelImporter:
             return loaded_transformer
         except FileNotFoundError:
             print('Model file not found!')
-            print(os.path.join(self.pth, self.folder_name, self.model_name))
+            print(os.path.join(self.folder_name, self.model_name))
         
