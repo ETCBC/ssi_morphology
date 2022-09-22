@@ -78,7 +78,7 @@ You can make predictions using a trained model on new data, for which you need t
 1. A file with new data in the folder new_data.
 2. A trained model.
 3. A configuration file of the model.
-4. A YAML file in which you indicate where the new data, the model and the model configuration file can be found.
+4. A yaml file in which you indicate where the new data, the model and the model configuration file can be found.
 
 ad 1. the data file is tab separated and should consist of four columns, without a header. The columns are book, chapter, verse, and text.
 ad 2. The model should be in a subfolder in the folder transformer models.
