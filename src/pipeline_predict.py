@@ -59,5 +59,5 @@ class PipeLinePredict:
                     for idx, label, input_txt, pred_txt in zip(indices, labels, input_text_separate_words, predicted_separate_words):
                         f.write(f'{str(idx)}\t{" ".join(label)}\t{input_txt}\t{pred_txt}\n')
                 else:
-                    f.write(f'{str(indices)}\t{str(labels)}\t{text}\{predicted}\n')
+                    f.write(f'{str(indices)}\t{str(labels)}\t{input_text}\t{predicted}\n')
              
