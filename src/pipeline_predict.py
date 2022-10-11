@@ -14,7 +14,7 @@ class PipeLinePredict:
         self.new_data_reader = self.read_new_data()
         self.new_dataset = self.make_new_dataset()
     
-        self.make_predictions_transformer_model()
+        self.export_predictions_transformer_model()
     
     def parse_config(self):
         config_parser = ConfigParser(self.predict_config_file)
@@ -38,26 +38,41 @@ class PipeLinePredict:
                                                    self.config_parser.model_config_data['output_w2idx'])
         return hebrew_words_new_text
         
-    def make_predictions_transformer_model(self):
+    def export_predictions_transformer_model(self):
+        """
+        Export data that are created by make_predictions function.
+        Results are written to an output file if this is specified in YAML file,
+        else results are written to standard output.
+        """
+        new_data_file = self.config_parser.new_data_file.split('.')[0]
+        
+        if self.config_parser.output:
+            with open(f'{PREDICTION_DATA_FOLDER}/{self.config_parser.output}', 'w') as f:
+                for prediction in self.make_predictions():
+                    f.write(prediction + '\n')
+        else:
+            for prediction in self.make_predictions():
+                print(prediction)
+    
+    def make_predictions(self):
+        """
+        Generator function which makes predictions on new data using trained model.
+        """
         model = self.model_importer.loaded_transformer
         model.eval()
         
-        new_data_file = self.config_parser.new_data_file.split('.')[0]
-
-        with open(f'{PREDICTION_DATA_FOLDER}/results_predictions_{new_data_file}.txt', 'w') as f:
-            for i in range(len(self.new_dataset)):
-                predicted = translate(model.to(device), self.new_dataset[i]['encoded_text'].to(device),
-                                  self.new_dataset.OUTPUT_IDX_TO_WORD, 
-                                  self.new_dataset.OUTPUT_WORD_TO_IDX)
-                indices = self.new_dataset[i]['indices']
-                labels = self.new_dataset[i]['labels']
-                input_text = self.new_dataset[i]['text']
+        for i in range(len(self.new_dataset)):
+            predicted = translate(model.to(device), self.new_dataset[i]['encoded_text'].to(device),
+                            self.new_dataset.OUTPUT_IDX_TO_WORD, 
+                            self.new_dataset.OUTPUT_WORD_TO_IDX)
+            indices = self.new_dataset[i]['indices']
+            labels = self.new_dataset[i]['labels']
+            input_text = self.new_dataset[i]['text']
                 
-                predicted_separate_words = predicted.split()
-                input_text_separate_words = input_text.split()
-                if len(predicted_separate_words) == len(input_text_separate_words):
-                    for idx, label, input_txt, pred_txt in zip(indices, labels, input_text_separate_words, predicted_separate_words):
-                        f.write(f'{str(idx)}\t{" ".join(label)}\t{input_txt}\t{pred_txt}\n')
-                else:
-                    f.write(f'{str(indices)}\t{str(labels)}\t{input_text}\t{predicted}\n')
-             
+            predicted_separate_words = predicted.split()
+            input_text_separate_words = input_text.split()
+            if len(predicted_separate_words) == len(input_text_separate_words):
+                for idx, label, input_txt, pred_txt in zip(indices, labels, input_text_separate_words, predicted_separate_words):
+                    yield f'{str(idx)}\t{" ".join(label)}\t{input_txt}\t{pred_txt}'
+            else:
+                yield f'{str(indices)}\t{str(labels)}\t{input_text}\t{predicted}'
