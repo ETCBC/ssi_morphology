@@ -1,5 +1,6 @@
 model_info:
-    folder: MODEL_t-in_con_t-out_ONE_DATASET
-    model_config: model_configseq2seq_5seqlen_0.0001lr_15_0epochs_512embedsize_8nhead_3nenclayers_3numdeclayers_transformer.pth.json
-    model: seq2seq_5seqlen_0.0001lr_15_0epochs_512embedsize_8nhead_3nenclayers_3numdeclayers_transformer
-new_data: SP_input
+    folder: MODEL_s-in_s-out_ONE_DATASET
+    model_config: model_configseq2seq_1seqlen_0.0001lr_1_0epochs_512embedsize_8nhead_3nenclayers_3numdeclayers_transformer.json
+    model: seq2seq_1seqlen_0.0001lr_1_0epochs_512embedsize_8nhead_3nenclayers_3numdeclayers_transformer.pth
+new_data: s-in
+output: s-nog-wat.txt
