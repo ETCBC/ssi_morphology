@@ -81,11 +81,11 @@ You can make predictions using a trained model on new data, for which you need t
 3. A configuration file of the model.
 4. A YAML file, which should be in the folder new_data, in which you indicate where the new data, the model, the model configuration file, and the name of the output file can be found.
 
-ad 1. the data file is tab separated and should consist of four columns, without a header. The columns are book, chapter, verse, and text.
-ad 2. The model should be in a subfolder in the folder transformer models.
-ad 3. The configuration file of the model is in the same folder as the model. The configuration file contains the hyperparameters needed to initialize the model. 
+- ad 1. the data file is tab separated and should consist of four columns, without a header. The columns are book, chapter, verse, and text.
+- ad 2. The model should be in a subfolder in the folder transformer models.
+- ad 3. The configuration file of the model is in the same folder as the model. The configuration file contains the hyperparameters needed to initialize the model. 
       Next to that, it contains the sequence length used to slice the text, and 2 dictionaries that are used to convert the input text to integers, and integers to output text.
-ad 4. The name of the output file is optional in the YAML. If no output filename is given, the results are written to standard output. The YAML file has the following structure:
+- ad 4. The name of the output file is optional in the YAML. If no output filename is given, the results are written to standard output. The YAML file has the following structure:
 
 ```
 model_info:
