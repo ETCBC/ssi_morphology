@@ -61,6 +61,8 @@ class PipeLinePredict:
         model = self.model_importer.loaded_transformer
         model.eval()
         
+        predict_idx = self.config_parser.predict_idx
+
         for i in range(len(self.new_dataset)):
             predicted = translate(model.to(device), self.new_dataset[i]['encoded_text'].to(device),
                             self.new_dataset.OUTPUT_IDX_TO_WORD, 
@@ -72,7 +74,13 @@ class PipeLinePredict:
             predicted_separate_words = predicted.split()
             input_text_separate_words = input_text.split()
             if len(predicted_separate_words) == len(input_text_separate_words):
-                for idx, label, input_txt, pred_txt in zip(indices, labels, input_text_separate_words, predicted_separate_words):
-                    yield f'{str(idx)}\t{" ".join(label)}\t{input_txt}\t{pred_txt}'
+                if i == 0:
+                    for idx in range(predict_idx+1):
+                        yield f'{str(indices[idx])}\t{" ".join(labels[idx])}\t{input_text_separate_words[idx]}\t{predicted_separate_words[idx]}'
+                elif i == len(self.new_dataset) - 1:
+                    for idx in range(predict_idx, len(labels)):
+                        yield f'{str(indices[idx])}\t{" ".join(labels[idx])}\t{input_text_separate_words[idx]}\t{predicted_separate_words[idx]}'
+                else:
+                    yield f'{str(indices[predict_idx])}\t{" ".join(labels[predict_idx])}\t{input_text_separate_words[predict_idx]}\t{predicted_separate_words[predict_idx]}'
             else:
                 yield f'{str(indices)}\t{str(labels)}\t{input_text}\t{predicted}'
