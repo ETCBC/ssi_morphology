@@ -46,17 +46,12 @@ class NewDataReader:
                 word_id += 1
 
     def make_sequences(self):
-        word_list = []
-        idx_list = []
-        for idx, text in self.data_ids2text.items():
-            word_list.append(text)
-            idx_list.append(idx)
-            if len(word_list) == self.seq_len:
-                self.prepared_data[tuple(idx_list)] = ' '.join(word_list)
-                word_list = []
-                idx_list = []
-        if idx_list:
-            self.prepared_data[tuple(idx_list)] = ' '.join(word_list)
+        """
+        Make partly overlapping sequences of length seq_len.
+        """
+        for idx in self.data_ids2text.keys():
+            if idx + self.seq_len -1 in self.data_ids2text:
+                self.prepared_data[tuple(range(idx, idx+self.seq_len))] = ' '.join([self.data_ids2text[idx] for idx in range(idx, idx+self.seq_len)])
 
 
 class HebrewWordsNewText(Dataset):
@@ -115,6 +110,7 @@ class ConfigParser:
         self.model_name = None
         self.new_data_file = None
         self.output = None
+        self.predict_idx = None
         
         self.get_file_names()
         self.model_config_data = self.import_model_config()
@@ -135,6 +131,7 @@ class ConfigParser:
             self.model_config_file_name = model_info['model_config']
             self.model_name = model_info['model']
             self.output = self.parsed_yaml.get('output')
+            self.predict_idx = int(self.parsed_yaml.get('predict_idx', 0))
         except KeyError as err:
             print()
             print(err)
