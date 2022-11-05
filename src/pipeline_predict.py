@@ -63,9 +63,9 @@ class PipeLinePredict:
         
         predict_idx = self.config_parser.predict_idx
 
-        for i in range(len(self.new_dataset)):
+        for i in range(4): # range(len(self.new_dataset)):
             predicted = translate(model.to(device), self.new_dataset[i]['encoded_text'].to(device),
-                            self.new_dataset.OUTPUT_IDX_TO_WORD, 
+                            self.new_dataset.OUTPUT_IDX_TO_WORD,
                             self.new_dataset.OUTPUT_WORD_TO_IDX)
             indices = self.new_dataset[i]['indices']
             labels = self.new_dataset[i]['labels']
