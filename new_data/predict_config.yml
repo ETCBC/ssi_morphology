@@ -5,3 +5,4 @@ model_info:
 new_data: psalm23.txt
 # output: psalm23_out.txt
 predict_idx: 3
+decode_function: beam
