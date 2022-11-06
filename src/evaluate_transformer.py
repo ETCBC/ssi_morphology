@@ -10,7 +10,6 @@ from transformer_train_fns import generate_square_subsequent_mask
 
 def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int):
     """Function to generate output sequence using greedy algorithm """
-    print('GREEDY DECODE')
     src = src.to(device)
     src_mask = src_mask.to(device)
 
@@ -36,12 +35,11 @@ def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_sym
 def sequence_length_penalty(length: int, alpha: float=0.6) -> float:
     return ((5 + length) / (5 + 1)) ** alpha
     
-def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int, beam_size:int=3):
+def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int, beam_size: int=3):
     """Function to generate output sequence using beam search algorithm 
     See also https://kikaben.com/transformers-evaluation-details/
     https://machinelearningmastery.com/beam-search-decoder-natural-language-processing
     """
-    print('BEAM DECODE')
     src = src.to(device)
     src_mask = src_mask.to(device)
 
@@ -50,9 +48,7 @@ def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbo
     
     alpha = 0.75
     
-    ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device)
-    #scores = torch.Tensor([0.]).to(device)
-    sequences = [[ys, 0.0]]
+    sequences = [[torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device), 0.0]]
     
     for i in range(max_len + 50):
         
