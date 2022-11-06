@@ -81,6 +81,7 @@ def main(args):
     
     # Evaluate on test set or not after training.
     parser.add_argument("-et", metavar="eval_test", help="Optional: evaluate at the end on test set (True) or not (False)", type=str2bool, const=True, default=False, nargs='?')
+    parser.add_argument("-dc", metavar="decoder_func", help="Optional: use beam search decoder 'beam' or greedy decoder 'greedy'", type=str, default='beam', nargs='?')
 
     args = parser.parse_args()
     
@@ -139,7 +140,8 @@ def main(args):
                         EVALUATION_RESULTS_PATH,
                         args.i2,
                         args.o2, 
-                        args.ep2
+                        args.ep2,
+                        args.dc
                         )
 
 
