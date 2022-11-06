@@ -58,9 +58,10 @@ There is an extra command argument:
 
 - ep2 Number of epochs for training the second (Syriac) dataset. With this argument the script will recognize that sequential training is needed.
 
-An optional argument is:
+Optional arguments are:
 
 - et Evaluate on test set. Default is False, if set to True, the model will be evaluated on the test set. In the case of training on two datasets, the test set will contain data from the second output file (o2).
+- dc Choice of the decoder function while making predictions or evaluating on the test set. Default is 'beam' (beam search). One can also choose 'greedy', for the greedy decoder. In general, beam search gives better accuracy, but is slower than the greedy decoder.
 
 There is a number of other optional arguments, which can be used to optimize the model:
 
