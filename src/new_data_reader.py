@@ -111,6 +111,7 @@ class ConfigParser:
         self.new_data_file = None
         self.output = None
         self.predict_idx = None
+        self.decode_func = None
         
         self.get_file_names()
         self.model_config_data = self.import_model_config()
@@ -132,6 +133,7 @@ class ConfigParser:
             self.model_name = model_info['model']
             self.output = self.parsed_yaml.get('output')
             self.predict_idx = int(self.parsed_yaml.get('predict_idx', 0))
+            self.decode_func = self.parsed_yaml.get('decode_function', 'greedy')
         except KeyError as err:
             print()
             print(err)

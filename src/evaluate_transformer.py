@@ -32,20 +32,26 @@ def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_sym
             break
     return ys
     
-def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int):
-    """Function to generate output sequence using greedy algorithm """
-    print(src)
+def sequence_length_penalty(length: int, alpha: float=0.6) -> float:
+    return ((5 + length) / (5 + 1)) ** alpha
+    
+def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int, beam_size:int=3):
+    """Function to generate output sequence using beam search algorithm 
+    See also https://kikaben.com/transformers-evaluation-details/
+    https://machinelearningmastery.com/beam-search-decoder-natural-language-processing
+    """
     src = src.to(device)
     src_mask = src_mask.to(device)
 
     memory = model.encode(src, src_mask)
-    #print(memory)
+    
+    alpha = 0.75
     
     ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device)
-    sequences_with_eos = []
+    scores = torch.Tensor([0.]).to(device)
     sequences = [[ys, 0.0]]
     
-    for i in range(max_len-1+20):
+    for i in range(max_len + 50):
         memory = memory.to(device)
         tgt_mask = (generate_square_subsequent_mask(ys.size(0))
                     .type(torch.bool)).to(device)
@@ -53,57 +59,53 @@ def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbo
         out = model.decode(ys, memory, tgt_mask)
         out = out.transpose(0, 1)
         prob = model.generator(out[:, -1])
-
-        best_k2_probs, best_k2_idx = prob.topk(3)
-        print('probs', best_k2_probs)
-        scores = torch.log(best_k2_probs).view(3, -1)
-        #log_probs = torch.log_softmax(best_k2_probs[:, -1], dim=1)
-        log_probs = torch.log_softmax(best_k2_probs, dim=1)
-        print('logprobs', log_probs)
-        # SEE: https://kikaben.com/transformers-evaluation-details/
+        
         all_candidates = list()
-        for i in range(len(sequences)):
-            seq, score = sequences[i]
-            for idx in range(3):
-                char_score = scores[idx][0].item()
-        #        character_idx = best_k2_idx[0][idx].item()
-        #        character_idcs = torch.cat([seq,
-        #                torch.ones(1, 1).type_as(src.data).fill_(character_idx)], dim=0)
-        #        candidate = [character_idcs, score + char_score, character_idx]
-        #        #print('CANDIDATE', candidate)
-        #        all_candidates.append(candidate)
-        #ordered = sorted(all_candidates, key=lambda tup:tup[1])
-        
-        #sequences = []
-        #for cand in ordered:
-        #   if cand[2] == end_symbol:
-        #       sequences_with_eos.append((cand[0], cand[1]))
-        #   else:
-        #       sequences.append((cand[0], cand[1]))
+        for j in range(len(sequences)):
+            seq, score = sequences[j]
+            
+            tgt_mask = (generate_square_subsequent_mask(seq.size(0))
+                    .type(torch.bool)).to(device)
+            out = model.decode(seq, memory, tgt_mask)
+            out = out.transpose(0, 1)
+            prob_beam = model.generator(out[:, -1])
+            
+            log_probs_all = torch.log_softmax(prob_beam, dim=1)
+            log_probs_all = log_probs_all / sequence_length_penalty(i+1, alpha)
+            prob_beam[0] = log_probs_all
+            scores, indices = torch.topk(prob_beam, beam_size)
+
+            for idx in range(beam_size):
+                char_score = scores[0][idx].item()
+                character_idx = indices[0][idx].item()
+                
+                if seq[-1].item() == end_symbol:
+                    character_idcs = torch.cat([seq,
+                        torch.ones(1, 1).type_as(src.data).fill_(end_symbol)], dim=0)
+                    char_score = 0
+                else:
+                    character_idcs = torch.cat([seq,
+                        torch.ones(1, 1).type_as(src.data).fill_(character_idx)], dim=0)
+                candidate = [character_idcs, score + char_score]
+
+                all_candidates.append(candidate)
+        ordered = sorted(all_candidates, key=lambda tup:tup[1], reverse=True)
                
-        #sequences = ordered[:3]
-        #print('SEQUENCES', sequences)
-        
-        _, next_word = torch.max(prob, dim=1)
-        next_word = next_word.item()
-        print('next word', next_word)
-        ys = torch.cat([ys,
-                        torch.ones(1, 1).type_as(src.data).fill_(next_word)], dim=0)
-        
-                        
-        if next_word == end_symbol:
+        sequences = ordered[:beam_size]
+        if all([seq[0][-1].item() == end_symbol for seq in sequences]):
             break
             
-        print('ys', ys)
-    return ys
+    best = sorted(sequences, key=lambda tup:tup[1], reverse=True)[0][0]
+    return best
 
 
-def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD: dict, OUTPUT_WORD_TO_IDX: dict):
+def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD: dict, OUTPUT_WORD_TO_IDX: dict, decode_func):
     model.eval()
     src = encoded_sentence.view(-1, 1)
     num_tokens = src.shape[0]
     src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool)
-    tgt_tokens = beam_decode(
+    decode_function = beam_decode if decode_func == 'beam' else greedy_decode
+    tgt_tokens = decode_function(
         model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX['SOS'], OUTPUT_WORD_TO_IDX['EOS']).flatten()
     
     return ''.join([OUTPUT_IDX_TO_WORD[idx] for idx in list(tgt_tokens.cpu().numpy())]).replace('SOS', '').replace('EOS', '')
@@ -122,7 +124,8 @@ def evaluate_transformer_model(eval_path: str,
                                model_path_full: str, 
                                evaluation_data, 
                                OUTPUT_IDX_TO_WORD: dict, 
-                               OUTPUT_WORD_TO_IDX: dict):
+                               OUTPUT_WORD_TO_IDX: dict,
+                               decode_func: str):
 
     loaded_transf = Seq2SeqTransformer(num_encoder_layers, num_decoder_layers, emb_size, 
                                        nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
@@ -141,7 +144,7 @@ def evaluate_transformer_model(eval_path: str,
     with open(f'{eval_path}/results_{evaluation_file_name}.txt', 'w') as f:
         test_len = len(evaluation_data)
         for i in range(test_len):
-            predicted = translate(loaded_transf.to(device), evaluation_data[i]['encoded_text'].to(device), OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX)
+            predicted = translate(loaded_transf.to(device), evaluation_data[i]['encoded_text'].to(device), OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX, decode_func)
             true_val = evaluation_data[i]['output']
         
             f.write(f'Predicted {predicted}\n')

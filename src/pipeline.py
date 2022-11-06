@@ -28,7 +28,8 @@ class PipeLineTrain:
                  evaluation_results_path: str,
                  input_file2: str=None, 
                  output_file2: str=None,
-                 epochs2: int=0
+                 epochs2: int=0,
+                 decode_func: str='beam'
                  ):
                  
         self.input_file = input_file
@@ -51,6 +52,7 @@ class PipeLineTrain:
         self.input_file2 = input_file2
         self.output_file2 = output_file2
         self.epochs2 = epochs2
+        self.decode_func = decode_func
         self.torch_seed = 42
         self.model_name = f'seq2seq_{self.length}seqlen_{self.learning_rate}lr_{self.epochs}_{self.epochs2}epochs_{self.emb}embedsize_{self.nh}nhead_{self.nel}nenclayers_{self.ndl}numdeclayers_transformer.pth'
         self.log_dir = f'runs/{self.input_file}_{self.output_file}/{self.length}seq_len_{self.learning_rate}lr_{self.epochs}_{self.epochs2}epochs_{self.emb}embsize_{self.nh}nhead_{self.nel}nenclayers_{self.ndl}numdeclayers_transformer'
@@ -162,5 +164,5 @@ class PipeLineTrain:
                                    self.model_path_full,
                                    test_set,
                                    self.OUTPUT_IDX_TO_WORD, 
-                                   self.OUTPUT_WORD_TO_IDX
-                                   )
+                                   self.OUTPUT_WORD_TO_IDX,
+                                   self.decode_func)
