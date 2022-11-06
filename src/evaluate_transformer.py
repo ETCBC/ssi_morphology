@@ -10,6 +10,7 @@ from transformer_train_fns import generate_square_subsequent_mask
 
 def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int):
     """Function to generate output sequence using greedy algorithm """
+    print('GREEDY DECODE')
     src = src.to(device)
     src_mask = src_mask.to(device)
 
@@ -40,25 +41,27 @@ def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbo
     See also https://kikaben.com/transformers-evaluation-details/
     https://machinelearningmastery.com/beam-search-decoder-natural-language-processing
     """
+    print('BEAM DECODE')
     src = src.to(device)
     src_mask = src_mask.to(device)
 
     memory = model.encode(src, src_mask)
+    memory = memory.to(device)
     
     alpha = 0.75
     
     ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device)
-    scores = torch.Tensor([0.]).to(device)
+    #scores = torch.Tensor([0.]).to(device)
     sequences = [[ys, 0.0]]
     
     for i in range(max_len + 50):
-        memory = memory.to(device)
-        tgt_mask = (generate_square_subsequent_mask(ys.size(0))
-                    .type(torch.bool)).to(device)
+        
+        #tgt_mask = (generate_square_subsequent_mask(ys.size(0))
+        #            .type(torch.bool)).to(device)
 
-        out = model.decode(ys, memory, tgt_mask)
-        out = out.transpose(0, 1)
-        prob = model.generator(out[:, -1])
+        #out = model.decode(ys, memory, tgt_mask)
+        #out = out.transpose(0, 1)
+        #prob = model.generator(out[:, -1])
         
         all_candidates = list()
         for j in range(len(sequences)):
