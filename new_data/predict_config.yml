@@ -3,6 +3,7 @@ model_info:
     model_config: model_configseq2seq_5seqlen_0.0001lr_25_0epochs_512embedsize_8nhead_3nenclayers_3numdeclayers_transformer.json
     model: seq2seq_5seqlen_0.0001lr_25_0epochs_512embedsize_8nhead_3nenclayers_3numdeclayers_transformer.pth
 new_data: psalm23.txt
-# output: psalm23_out.txt
+output: psalm23_out.txt
 predict_idx: 3
-decode_function: beam
+beam_size: 3
+beam_alpha: 0.75

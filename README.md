@@ -61,7 +61,8 @@ There is an extra command argument:
 Optional arguments are:
 
 - et Evaluate on test set. Default is False, if set to True, the model will be evaluated on the test set. In the case of training on two datasets, the test set will contain data from the second output file (o2).
-- dc Choice of the decoder function while making predictions or evaluating on the test set. Default is 'beam' (beam search). One can also choose 'greedy', for the greedy decoder. In general, beam search gives better accuracy, but is slower than the greedy decoder.
+- sz This is the beam size during beam search decoding. Default is 3. If one chooses 0, a greedy decoder is used. In general, beam search gives better accuracy, but is slower than the greedy decoder.
+- ba Is the beam alpha value. Default is 0.75. This regulates the penalty for longer sequences. See also [this paper](https://arxiv.org/pdf/1609.08144.pdf), page 12. 
 
 There is a number of other optional arguments, which can be used to optimize the model:
 
