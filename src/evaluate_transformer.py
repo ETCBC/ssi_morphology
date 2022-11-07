@@ -34,7 +34,8 @@ def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbo
     """Function to generate output sequence using beam search algorithm.
     If the beam size is 0, greedy decoding will be applied.
     """
-    src, src_mask, memory  = src.to(device), src_mask.to(device), (model.encode(src, src_mask)).to(device)
+    src, src_mask = src.to(device), src_mask.to(device)
+    memory = (model.encode(src, src_mask)).to(device)
 
     if not beam_size:
         return greedy_decode(memory, src, src_mask, max_len, start_symbol, end_symbol)
@@ -81,7 +82,7 @@ def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbo
     return best
 
 
-def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD: dict, OUTPUT_WORD_TO_IDX: dict, beam_size: int):
+def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD: dict, OUTPUT_WORD_TO_IDX: dict, beam_size: int, beam_alpha: float):
     model.eval()
     src = encoded_sentence.view(-1, 1)
     num_tokens = src.shape[0]

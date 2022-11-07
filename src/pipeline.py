@@ -54,7 +54,7 @@ class PipeLineTrain:
         self.output_file2 = output_file2
         self.epochs2 = epochs2
         self.beam_size = beam_size
-        self.beam_alpha
+        self.beam_alpha = beam_alpha
         self.torch_seed = 42
         self.model_name = f'seq2seq_{self.length}seqlen_{self.learning_rate}lr_{self.epochs}_{self.epochs2}epochs_{self.emb}embedsize_{self.nh}nhead_{self.nel}nenclayers_{self.ndl}numdeclayers_transformer.pth'
         self.log_dir = f'runs/{self.input_file}_{self.output_file}/{self.length}seq_len_{self.learning_rate}lr_{self.epochs}_{self.epochs2}epochs_{self.emb}embsize_{self.nh}nhead_{self.nel}nenclayers_{self.ndl}numdeclayers_transformer'
