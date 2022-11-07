@@ -7,7 +7,7 @@
 6	Psalms 23 2	W<L	W-<L
 7	Psalms 23 2	MRG>	MRG/~>
 8	Psalms 23 2	D<WCN>	D-<WCN/~>
-9	Psalms 23 2	NCRJNJ	N!CR(J[JNd
+9	Psalms 23 2	NCRJNJ	N!CR(J[&JNd
 10	Psalms 23 2	W<L	W-<L
 11	Psalms 23 2	MJ>	MJ/(J~>
 12	Psalms 23 2	NJX>	NJX/~>
@@ -22,7 +22,7 @@
 21	Psalms 23 4	>PN	>P-(HN
 22	Psalms 23 4	>HLK	>!HLK[d
 23	Psalms 23 4	BNXLJ	B-NXL/-J
-24	Psalms 23 4	VLLJ	VLL&J/
+24	Psalms 23 4	VLLJ	VLL-J
 25	Psalms 23 4	MWTH	MWT=/-H
 26	Psalms 23 4	L>	L>
 27	Psalms 23 4	>DXL	>!DXL[
@@ -41,9 +41,9 @@
 40	Psalms 23 5	LWQBL	LWQBL
 41	Psalms 23 5	B<LDBBJ	B<LDBBB/J
 42	Psalms 23 5	>DHNT	>DHN[T==
-43	Psalms 23 5	RJCJ	RJC/
+43	Psalms 23 5	RJCJ	RJC/J
 44	Psalms 23 5	BMCX>	B-MCX=/~>
-45	Psalms 23 5	WKSJ	W-KSJ=[
+45	Psalms 23 5	WKSJ	W-KSJ[
 46	Psalms 23 5	MRW>	MRW>/
 47	Psalms 23 5	>JK	>JK
 48	Psalms 23 5	XJ>	XJ/(J~>
