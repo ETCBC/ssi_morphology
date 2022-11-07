@@ -10,13 +10,8 @@ from transformer_train_fns import generate_square_subsequent_mask
 
 def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int):
     """Function to generate output sequence using greedy algorithm """
-    src = src.to(device)
-    src_mask = src_mask.to(device)
-
-    memory = model.encode(src, src_mask)
     ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device)
-    for i in range(max_len-1+20):
-        memory = memory.to(device)
+    for i in range(max_len + 50):
         tgt_mask = (generate_square_subsequent_mask(ys.size(0))
                     .type(torch.bool)).to(device)
 
@@ -35,30 +30,18 @@ def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_sym
 def sequence_length_penalty(length: int, alpha: float=0.6) -> float:
     return ((5 + length) / (5 + 1)) ** alpha
     
-def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int, beam_size: int=3):
-    """Function to generate output sequence using beam search algorithm 
-    See also https://kikaben.com/transformers-evaluation-details/
-    https://machinelearningmastery.com/beam-search-decoder-natural-language-processing
+def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int, beam_size: int, alpha:int=0.75):
+    """Function to generate output sequence using beam search algorithm.
+    If the beam size is 0, greedy decoding will be applied.
     """
-    src = src.to(device)
-    src_mask = src_mask.to(device)
+    src, src_mask, memory  = src.to(device), src_mask.to(device), (model.encode(src, src_mask)).to(device)
 
-    memory = model.encode(src, src_mask)
-    memory = memory.to(device)
-    
-    alpha = 0.75
+    if not beam_size:
+        return greedy_decode(memory, src, src_mask, max_len, start_symbol, end_symbol)
     
     sequences = [[torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device), 0.0]]
     
     for i in range(max_len + 50):
-        
-        #tgt_mask = (generate_square_subsequent_mask(ys.size(0))
-        #            .type(torch.bool)).to(device)
-
-        #out = model.decode(ys, memory, tgt_mask)
-        #out = out.transpose(0, 1)
-        #prob = model.generator(out[:, -1])
-        
         all_candidates = list()
         for j in range(len(sequences)):
             seq, score = sequences[j]
@@ -98,14 +81,13 @@ def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbo
     return best
 
 
-def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD: dict, OUTPUT_WORD_TO_IDX: dict, decode_func):
+def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD: dict, OUTPUT_WORD_TO_IDX: dict, beam_size: int):
     model.eval()
     src = encoded_sentence.view(-1, 1)
     num_tokens = src.shape[0]
     src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool)
-    decode_function = beam_decode if decode_func == 'beam' else greedy_decode
-    tgt_tokens = decode_function(
-        model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX['SOS'], OUTPUT_WORD_TO_IDX['EOS']).flatten()
+    tgt_tokens = beam_decode(
+        model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX['SOS'], OUTPUT_WORD_TO_IDX['EOS'], beam_size).flatten()
     
     return ''.join([OUTPUT_IDX_TO_WORD[idx] for idx in list(tgt_tokens.cpu().numpy())]).replace('SOS', '').replace('EOS', '')
     
@@ -124,7 +106,8 @@ def evaluate_transformer_model(eval_path: str,
                                evaluation_data, 
                                OUTPUT_IDX_TO_WORD: dict, 
                                OUTPUT_WORD_TO_IDX: dict,
-                               decode_func: str):
+                               beam_size: int,
+                               beam_alpha: float):
 
     loaded_transf = Seq2SeqTransformer(num_encoder_layers, num_decoder_layers, emb_size, 
                                        nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
@@ -143,7 +126,7 @@ def evaluate_transformer_model(eval_path: str,
     with open(f'{eval_path}/results_{evaluation_file_name}.txt', 'w') as f:
         test_len = len(evaluation_data)
         for i in range(test_len):
-            predicted = translate(loaded_transf.to(device), evaluation_data[i]['encoded_text'].to(device), OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX, decode_func)
+            predicted = translate(loaded_transf.to(device), evaluation_data[i]['encoded_text'].to(device), OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX, beam_size, beam_alpha)
             true_val = evaluation_data[i]['output']
         
             f.write(f'Predicted {predicted}\n')

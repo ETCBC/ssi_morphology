@@ -67,7 +67,8 @@ class PipeLinePredict:
             predicted = translate(model.to(device), self.new_dataset[i]['encoded_text'].to(device),
                             self.new_dataset.OUTPUT_IDX_TO_WORD,
                             self.new_dataset.OUTPUT_WORD_TO_IDX,
-                            self.config_parser.decode_func)
+                            self.config_parser.beam_size,
+                            self.config_parser.beam_alpha)
             indices = self.new_dataset[i]['indices']
             labels = self.new_dataset[i]['labels']
             input_text = self.new_dataset[i]['text']
