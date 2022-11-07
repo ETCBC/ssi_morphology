@@ -27,7 +27,7 @@ def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_sym
             break
     return ys
     
-def sequence_length_penalty(length: int, alpha: float=0.6) -> float:
+def sequence_length_penalty(length: int, alpha: float=0.75) -> float:
     return ((5 + length) / (5 + 1)) ** alpha
     
 def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int, beam_size: int, alpha:int=0.75):
