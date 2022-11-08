@@ -5,5 +5,5 @@ model_info:
 new_data: psalm23.txt
 output: psalm23_out.txt
 predict_idx: 3
-beam_size: 3
+beam_size: 0
 beam_alpha: 0.75
