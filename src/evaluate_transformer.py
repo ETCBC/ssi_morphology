@@ -10,6 +10,7 @@ from transformer_train_fns import generate_square_subsequent_mask
 
 def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int):
     """Function to generate output sequence using greedy algorithm """
+    memory = (model.encode(src, src_mask)).to(device)
     ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device)
     for i in range(max_len + 50):
         tgt_mask = (generate_square_subsequent_mask(ys.size(0))
@@ -38,7 +39,7 @@ def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbo
     memory = (model.encode(src, src_mask)).to(device)
 
     if not beam_size:
-        return greedy_decode(memory, src, src_mask, max_len, start_symbol, end_symbol)
+        return greedy_decode(model, src, src_mask, max_len, start_symbol, end_symbol)
     
     sequences = [[torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device), 0.0]]
     
