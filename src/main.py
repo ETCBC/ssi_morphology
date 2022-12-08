@@ -47,8 +47,6 @@ def main(args):
     :i2: second input file
     :o2: second output file
     :ep2: number of epochs for training second dataset
-    
-    :et: evaluate on testset, if there are two input and output datasets, evaluation takes place on second dataset only.
     """
     
     parser = argparse.ArgumentParser()
@@ -79,7 +77,7 @@ def main(args):
     parser.add_argument("-b", metavar="batch_size", help="Optional: batch size during training", type=int, default=128, nargs='?')
     parser.add_argument("-wd", metavar="weight_decay", help="Optional: weight decay passed to optimizer", type=float, default=0.0, nargs='?')
     
-    # Evaluate on test set or not after training.
+    # Evaluate on test set after training the model.
     parser.add_argument("-et", metavar="eval_test", help="Optional: evaluate at the end on test set (True) or not (False)", type=str2bool, const=True, default=False, nargs='?')
     parser.add_argument("-sz", metavar="beam_size", help="Optional: size of beam during beam size decoding. If 0 is chosen, decoding takes place with greedy decoding", type=int, default=3, nargs='?')
     parser.add_argument("-ba", metavar="beam_alpha", help="Optional: alpha value regulates the penalty for longer sequences during beam search.", type=float, default=0.75, nargs='?')
@@ -143,7 +141,8 @@ def main(args):
                         args.o2, 
                         args.ep2,
                         args.sz,
-                        args.ba
+                        args.ba,
+                        val_plus_test_size=0.3
                         )
 
 
