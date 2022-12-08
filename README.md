@@ -87,7 +87,7 @@ You can make predictions using a trained model on new data, for which you need t
 - ad 2. The model should be in a subfolder in the folder transformer models.
 - ad 3. The configuration file of the model is in the same folder as the model. The configuration file contains the hyperparameters needed to initialize the model. 
       Next to that, it contains the sequence length used to slice the text, and 2 dictionaries that are used to convert the input text to integers, and integers to output text.
-- ad 4. The name of the output file is optional in the YAML. If no output filename is given, the results are written to standard output. You can also indicate the index in the sequence for which you want the prediction. If this is not indicated, the predict_idx is set to 0. The YAML file has the following structure:
+- ad 4. The name of the output file is optional in the YAML. If no output filename is given, the results are written to standard output. You can also indicate the index in the sequence for which you want the prediction (If this is not indicated, the predict_idx is set to 0.), the beam size (0 for greedy decoding), and the beam alpha value. The YAML file has the following structure:
 
 ```
 model_info:
@@ -97,6 +97,8 @@ model_info:
 new_data: new_data_file_name
 output: output_file_name
 predict_idx: idx
+beam_size: beam_size
+beam_alpha: beam_alpha
 ```
 
 You can run a prediction with:
