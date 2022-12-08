@@ -26,11 +26,12 @@ class PipeLineTrain:
                  learning_rate: float,
                  model_path: str,
                  evaluation_results_path: str,
-                 input_file2: str=None, 
-                 output_file2: str=None,
-                 epochs2: int=0,
-                 beam_size: int=3,
-                 beam_alpha: float=0.75
+                 input_file2: str, 
+                 output_file2: str,
+                 epochs2: int,
+                 beam_size: int,
+                 beam_alpha: float,
+                 val_plus_test_size: float
                  ):
                  
         self.input_file = input_file
@@ -46,7 +47,7 @@ class PipeLineTrain:
         self.dr = dr
         self.batch_size = batch_size
         self.epochs = epochs
-        self.val_plus_test_size = 0.3
+        self.val_plus_test_size = val_plus_test_size
         self.learning_rate = learning_rate
         self.model_path = model_path
         self.evaluation_results_path = evaluation_results_path
@@ -148,7 +149,7 @@ class PipeLineTrain:
     def evaluate_on_test_set(self, test_set, training_type):
     
         eval_path = f'{self.evaluation_results_path}/{self.input_file}_{self.output_file}_{training_type}'
-        evaluation_file_name = f'{self.length}seq_len_{self.learning_rate}lr_{self.emb}embsize_{self.nh}nhead_transformer_{self.dr}dropout_{self.batch_size}batchsize_epochs_{self.epochs}'
+        evaluation_file_name = f'{self.length}seq_len_{self.learning_rate}lr_{self.emb}embsize_{self.nh}nhead_transformer_{self.dr}dropout_{self.batch_size}_batchsize_{self.epochs}epochs_{self.beam_size}beamsize'
         if self.input_file2 and self.output_file2:
             eval_path = eval_path + f'_{self.input_file2}_{self.output_file2}'
             evaluation_file_name = evaluation_file_name + f'_epochs2_{self.epochs2}'
