@@ -145,7 +145,6 @@ def main(args):
                         val_plus_test_size=0.3
                         )
 
-
         if training_type == TrainingType.TWO_DATASETS_SIMULTANEOUSLY:
             train_data_X, train_data_y, val_data_X, val_data_y = pipeline.merge_datasets()
             hebrew_train, hebrew_val, test_set = pipeline.make_pytorch_merged_datasets(train_data_X, 

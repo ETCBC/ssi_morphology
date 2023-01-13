@@ -35,6 +35,10 @@ class DataReader:
     Read data from input and output file,
     and collect data in groups of sequence_length sequential verses.
     Split data in training, validation and test set.
+    
+    Partly overlapping sequences of text are created with length sequence_length.
+    It is important that there is no (partly) overlap between training, validation and test set.
+    Also, there is no overlap between texts of different books.
     """
     def __init__(self, 
                  input_filename: str, 
@@ -63,9 +67,6 @@ class DataReader:
             print(err)
 
         assert len(input_verses) == len(output_verses)
-
-        self.input_data = []
-        self.output_data = []
         
         all_input_words_per_book = collections.defaultdict(list)
         all_output_words_per_book = collections.defaultdict(list)
@@ -87,24 +88,30 @@ class DataReader:
 
         all_input_words_per_book_grouped = self.group_verses(all_input_words_per_book)
         all_output_words_per_book_grouped = self.group_verses(all_output_words_per_book)
-        
-        all_input_words = self.make_flat_lists(all_input_words_per_book_grouped)
-        all_output_words = self.make_flat_lists(all_output_words_per_book_grouped)
+
+        all_input_words = self.flatten_inner_lists(all_input_words_per_book_grouped)
+        all_output_words = self.flatten_inner_lists(all_output_words_per_book_grouped)
 
         all_input_seq_lists, all_output_seq_lists = self.make_rolling_window_strings(all_input_words, all_output_words)
-                    
+
         self.X_train, X_val_test, self.y_train, y_val_test = train_test_split(all_input_seq_lists, all_output_seq_lists, test_size=self.val_plus_test_size, random_state=42)
         self.X_val, self.X_test, self.y_val, self.y_test = train_test_split(X_val_test, y_val_test, test_size=0.5, random_state=11)
         
-        self.X_train = [item for sublist in self.X_train for item in sublist]
-        self.y_train = [item for sublist in self.y_train for item in sublist]
-        self.X_val = [item for sublist in self.X_val for item in sublist]
-        self.y_val = [item for sublist in self.y_val for item in sublist]
-        self.X_test = [item for sublist in self.X_test for item in sublist]
-        self.y_test = [item for sublist in self.y_test for item in sublist]
+        self.flatten_list_of_lists()
+
         
     def group_verses(self, all_words_per_book: dict):
-                     
+        """
+        Function makes verses in groups of sequence_length verses.
+        In this way, it is guaranteed that every sequence has the desired length, 
+        and that the text can be split without overlap.
+        Input:
+            all_words_per_book: dict, keys are book names, values are list of lists.
+            Every list contains words of a verse.
+        Output:
+            grouped_verses_dict: dict, keys are book names, values are list of lists of lists, 
+            similar to input, but with extra layer in which verses are grouped in sequence_length verses.
+        """
         grouped_verses_dict = {}
         
         for book, verse_list in all_words_per_book.items():
@@ -114,14 +121,17 @@ class DataReader:
             else:
                 grouped_verses = [verse_list[idx:idx+self.sequence_length] for idx in range(0, len(verse_list), self.sequence_length)]
                 if len(grouped_verses[-1]) < self.sequence_length:
-                    last_list = grouped_verses.pop(-1)
-                    grouped_verses[-1] += last_list
+                    grouped_verses[-1] += grouped_verses.pop(-1)
                 grouped_verses_dict[book] = grouped_verses
             
         return grouped_verses_dict
         
     def make_rolling_window_strings(self, all_input_words, all_output_words):
-    
+        """
+        In this function, strings are created of sequence_length words long.
+        Sequences with a * in it are removed, because there are ketiv/qere cases,
+        and sequences with _ in the output (place names) are removed as well.
+        """
         all_input_seq_lists = []
         all_output_seq_lists = []
         
@@ -132,31 +142,47 @@ class DataReader:
                 for word_idx in range(len(word_list_input) - self.sequence_length + 1):
                     input_seq = ' '.join(word_list_input[word_idx:word_idx + self.sequence_length])
                     output_seq = ' '.join(word_list_output[word_idx:word_idx + self.sequence_length])
-                    
-                    if "*" not in input_seq and "_" not in output_seq:
+
+                    if '*' not in input_seq and '_' not in output_seq:
                         input_seq_list.append(input_seq)
                         output_seq_list.append(output_seq)
-                        
-                        for char in input_seq:
-                            if char not in self.INPUT_WORD_TO_IDX:
-                                self.INPUT_WORD_TO_IDX[char] = len(self.INPUT_WORD_TO_IDX)
-                        for char in output_seq:
-                            if char not in self.OUTPUT_WORD_TO_IDX:
-                                self.OUTPUT_WORD_TO_IDX[char] = len(self.OUTPUT_WORD_TO_IDX)
-                if len(input_seq_list) > 0:
+                        self.make_char2idx_dicts(input_seq, output_seq)
+
+                if input_seq_list:
                     all_input_seq_lists.append(input_seq_list)
                     all_output_seq_lists.append(output_seq_list)
                     
         return all_input_seq_lists, all_output_seq_lists
         
+    def make_char2idx_dicts(self, input_seq, output_seq):
+        for char in input_seq:
+            if char not in self.INPUT_WORD_TO_IDX:
+                self.INPUT_WORD_TO_IDX[char] = len(self.INPUT_WORD_TO_IDX)
+        for char in output_seq:
+            if char not in self.OUTPUT_WORD_TO_IDX:
+               self.OUTPUT_WORD_TO_IDX[char] = len(self.OUTPUT_WORD_TO_IDX)
+        
     @staticmethod
-    def make_flat_lists(data_dict):
+    def flatten_inner_lists(data_dict):
+        """
+        Flatten lowest layer in list of lists of lists.
+        """
         new_data_dict = {}
         for bo, w_list in data_dict.items():
-            flat_w_list = [word for sublist in w_list for word in sublist]
-            new_data_dict[bo] = flat_w_list
+            flattened_list = []
+            for sub_list in w_list:
+                flattened_list.append([word for subsublist in sub_list for word in subsublist])
+            new_data_dict[bo] = flattened_list
             
         return new_data_dict
+        
+    def flatten_list_of_lists(self):
+        self.X_train = [item for sublist in self.X_train for item in sublist]
+        self.y_train = [item for sublist in self.y_train for item in sublist]
+        self.X_val = [item for sublist in self.X_val for item in sublist]
+        self.y_val = [item for sublist in self.y_val for item in sublist]
+        self.X_test = [item for sublist in self.X_test for item in sublist]
+        self.y_test = [item for sublist in self.y_test for item in sublist]
 
 
 class HebrewWords(Dataset):
@@ -195,7 +221,6 @@ class HebrewWords(Dataset):
             idx = idx.tolist()
 
         text_input = self.input_data[idx]
-
         text_output = mc_reduce(self.output_data[idx])
 
         sample = {
@@ -208,9 +233,8 @@ class HebrewWords(Dataset):
         return sample
 
 
-# function to collate data samples into batch tesors
 def collate_transformer_fn(batch):
-  
+    """Function to collate data samples into batch tensors"""
     src_batch, tgt_batch = [], []
     
     for sample in batch:
@@ -289,7 +313,7 @@ def mc_expand(s: str) -> str:
         
 class DataMerger:
     """
-    Class is used when model is trained on two datasets (Hebrew and Syriac)
+    Datamerger class is used when model is trained on two datasets (Hebrew and Syriac)
     at the same time.
     """
     def __init__(self, 
