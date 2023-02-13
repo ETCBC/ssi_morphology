@@ -75,7 +75,7 @@ class PipeLinePredict:
                 
             predicted_separate_words = predicted.split()
             input_text_separate_words = input_text.split()
-            if len(predicted_separate_words) == len(input_text_separate_words):
+            if predict_idx + 1 <= len(predicted_separate_words) and predict_idx + 1 < len(input_text_separate_words):
                 if i == 0:
                     for idx in range(predict_idx+1):
                         yield f'{str(indices[idx])}\t{" ".join(labels[idx])}\t{input_text_separate_words[idx]}\t{predicted_separate_words[idx]}'
