@@ -4,6 +4,7 @@ import os
 import torch
 
 from config import device
+from data import mc_expand
 from model_transformer import Seq2SeqTransformer
 from transformer_train_fns import generate_square_subsequent_mask
 
@@ -130,7 +131,9 @@ def evaluate_transformer_model(eval_path: str,
         for i in range(test_len):
             predicted = translate(loaded_transf.to(device), evaluation_data[i]['encoded_text'].to(device), OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX, beam_size, beam_alpha)
             true_val = evaluation_data[i]['output']
-        
+
+            predicted = mc_expand_whole_sequences(predicted)
+            true_val = mc_expand_whole_sequences(true_val)
             f.write(f'Predicted {predicted}\n')
             f.write(f'Truevalue {true_val}\n')
 
@@ -153,3 +156,8 @@ def evaluate_transformer_model(eval_path: str,
         f.write('\n')
         f.write(f'Correct complete strings {correct_complete_sequence / test_len}\n')
         f.write(f'Correct distinct words {[correct_count / test_len for correct_count in correct_all_words]}\n')
+
+    
+def mc_expand_whole_sequences(sequence):
+    expanded_seq = ' '.join([mc_expand(word) for word in sequence.split()])
+    return expanded_seq
