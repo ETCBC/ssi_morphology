@@ -2,9 +2,11 @@
 This repository contains code and data for the OpenSSI Hebrew/Syriac morphology project of the [Netherlands eScience Center](https://www.esciencecenter.nl/) and the [Eep Talstra Centre for Bible and Computer (ETCBC)](www.etcbc.nl)) of the [Faculty of Religion and Theology, Vrije Universiteit](https://frt.vu.nl/nl/index.aspx) entitled “Morphological Parser for Inflectional Languages Using Deep Learning”. The project is based on the experience that has been built up in more than four decades of the computational linguistic analysis of the Hebrew Bible at the Eep Talstra Centre for Bible and Computer (ETCBC) and some of the unique aspects of the encoding of the ETCBC linguistic database of the Hebrew Bible. These unique aspects do justice to the fact that Biblical Hebrew, like many other Semitic languages, is an inflectional language with a rich morphology. What can be said with one word in Biblical Hebrew sometimes needs five or six words in an English translation. Therefore, to add linguistic annotations to a text, it is better to encode the smaller parts of a word (morphemes) rather than the complete words (as is usually done in, e.g., the preparation of English or Dutch text corpora). This, however, is very labour-intensive. The new project will endeavour to use Machine Learning to automate this process for Hebrew and Syriac texts.
 
 # Dependencies
-The dependencies are Pytorch, Scikit Learn, Tensorboard, PyYAML, and python-Levenshtein, which you install with:
+You install most dependencies with:
 
 `pip install -r requirements.txt`
+
+For the installation of Pytorch, see [the Pytorch website](https://pytorch.org/).
 
 # Data
 In the folder "data" some datasets are provided. These datasets are tab separated files, containing 4 columns: book, chapter, verse, text.
@@ -26,13 +28,13 @@ There are three different ways you can train a model:
 You can train a model which can parse Hebrew or Syriac morphology. It works best if you use a GPU. A minimal input would be:
 
 Train model on vocalized Hebrew input data:
-- python main.py -mo=train -i=t-in_voc -o=t-out -ep=2 -l=5 -lr=0.0001
+- `python main.py -mo=train -i=t-in_voc -o=t-out -ep=2 -l=5 -lr=0.0001`
 
 Train model on unvocalized data:
-- python main.py -mo=train -i=t-in_con -o=t-out -ep=2 -l=5 -lr=0.0001
+- `python main.py -mo=train -i=t-in_con -o=t-out -ep=2 -l=5 -lr=0.0001`
 
 Train model on Syriac data:
-- python main.py -mo=train -i=s-in -o=s-out -ep=2 -l=5 -lr=0.0001
+- `python main.py -mo=train -i=s-in -o=s-out -ep=2 -l=5 -lr=0.0001`
 
 The required command line arguments are:
 - mo Mode, can be train or predict.
@@ -44,7 +46,7 @@ The required command line arguments are:
 
 ### 2. Train on two datasets (data are mixed)
 It is also possible to train a model on Hebrew and Syriac data together. Here, data are imported and mixed before training takes place.
-- python main.py -mo=train -i=t-in_voc -o=t-out -i2=s-in -o2=s-out -ep=2 -l=5 -lr=0.0001
+- `python main.py -mo=train -i=t-in_voc -o=t-out -i2=s-in -o2=s-out -ep=2 -l=5 -lr=0.0001`
 
 There are two extra arguments:
 - i2 the second input file.
@@ -52,7 +54,7 @@ There are two extra arguments:
 
 ### 3. Train on two datasets (sequentially)
 You can also apply Transfer Learning. With Transfer Learning, you will first train the model on Hebrew data, after which you continue training the model on Syriac data.
-- python main.py -mo=train -i=t-in_voc -o=t-out -i2=s-in -o2=s-out -ep=2 -ep2=2 -l=5 -lr=0.0001
+- `python main.py -mo=train -i=t-in_voc -o=t-out -i2=s-in -o2=s-out -ep=2 -ep2=2 -l=5 -lr=0.0001`
 
 There is an extra command argument:
 
