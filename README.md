@@ -15,8 +15,8 @@ The text is in ETCBC transcription.
 - t-in_con: raw unvocalized text of the MT.
 - t-in_voc: raw vocalized text of the MT.
 - t-out: morphologically parsed MT.
-- s-in: raw Syriac text.
-- s-out: morphologically parsed Syriac text.
+- s2-in: raw Syriac text.
+- s2-out: morphologically parsed Syriac text.
 
 Models are saved in the folder transformer_models.
 The results of evaluation on the test set are saved in the folder evaluation_results_transformer.
@@ -34,7 +34,7 @@ Train model on unvocalized data:
 - `python main.py -mo=train -i=t-in_con -o=t-out -ep=2 -l=5 -lr=0.0001`
 
 Train model on Syriac data:
-- `python main.py -mo=train -i=s-in -o=s-out -ep=2 -l=5 -lr=0.0001`
+- `python main.py -mo=train -i=s2-in -o=s2-out -ep=2 -l=5 -lr=0.0001`
 
 The required command line arguments are:
 - mo Mode, can be train or predict.

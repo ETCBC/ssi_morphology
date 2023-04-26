@@ -164,7 +164,7 @@ def main(args):
         transformer = pipeline.initialize_model()
         loss_fn = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
         optimizer = optim.Adam(transformer.parameters(), lr=args.lr, betas=(0.9, 0.98), eps=1e-9, weight_decay=args.wd)
-        trained_transformer = pipeline.train_model(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, PAD_IDX)
+        trained_transformer = pipeline.train_model(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, args.ep, PAD_IDX)
     
         # Save and evaluate model
         if training_type in {TrainingType.TWO_DATASETS_SIMULTANEOUSLY, TrainingType.ONE_DATASET}:
@@ -175,7 +175,7 @@ def main(args):
         # Train model on second dataset, save model and evaluate it.
         elif training_type == TrainingType.TWO_DATASETS_SEQUENTIALLY:
             train_dataloader_s, eval_dataloader_s = pipeline.make_data_loader(syr_train, syr_val)
-            trained_transformer = pipeline.train_model(trained_transformer, loss_fn, optimizer, train_dataloader_s, eval_dataloader_s, PAD_IDX)
+            trained_transformer = pipeline.train_model(trained_transformer, loss_fn, optimizer, train_dataloader_s, eval_dataloader_s, args.ep2, PAD_IDX)
             pipeline.save_model(trained_transformer, training_type)
             if args.et:
                 pipeline.evaluate_on_test_set(test_set, training_type.name)
