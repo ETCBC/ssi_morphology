@@ -1,7 +1,8 @@
 import os
 
 from config import device, PREDICTION_DATA_FOLDER
-from evaluate_transformer import translate
+from data import mc_expand
+from evaluate_transformer import translate, mc_expand_whole_sequences
 from new_data_reader import ConfigParser, ModelImporter, NewDataReader, HebrewWordsNewText
 
 class PipeLinePredict:
@@ -64,11 +65,13 @@ class PipeLinePredict:
         predict_idx = self.config_parser.predict_idx
 
         for i in range(len(self.new_dataset)):
-            predicted = translate(model.to(device), self.new_dataset[i]['encoded_text'].to(device),
+            predicted = translate(model.to(device), 
+                            self.new_dataset[i]['encoded_text'].to(device),
                             self.new_dataset.OUTPUT_IDX_TO_WORD,
                             self.new_dataset.OUTPUT_WORD_TO_IDX,
                             self.config_parser.beam_size,
                             self.config_parser.beam_alpha)
+            predicted = mc_expand_whole_sequences(predicted)
             indices = self.new_dataset[i]['indices']
             labels = self.new_dataset[i]['labels']
             input_text = self.new_dataset[i]['text']

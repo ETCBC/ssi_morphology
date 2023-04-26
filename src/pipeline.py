@@ -105,9 +105,9 @@ class PipeLineTrain:
         transformer = initialize_transformer_model(self.nel, self.ndl, self.emb, self.nh, self.src_vocab_size, self.tgt_vocab_size, self.ffn, self.dr)
         return transformer
         
-    def train_model(self, transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, PAD_IDX):
+    def train_model(self, transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, epochs, PAD_IDX):
         trained_model = train_transformer(transformer, loss_fn, optimizer, train_dataloader, 
-                                          eval_dataloader, self.epochs, PAD_IDX, self.torch_seed, 
+                                          eval_dataloader, epochs, PAD_IDX, self.torch_seed, 
                                           self.learning_rate, self.log_dir, self.batch_size, self.INPUT_WORD_TO_IDX, 
                                           self.OUTPUT_WORD_TO_IDX)
         return trained_model
