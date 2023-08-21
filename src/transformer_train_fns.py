@@ -115,18 +115,23 @@ def valid_step(session):
    return valid_loss / n, valid_accy / n
 
 
-def run_training(session):
-   print('Epoch', 'Training loss', 'Training accuracy',
+def run_training(session, writer):
+    print('Epoch', 'Training loss', 'Training accuracy',
                 'Validation loss', 'Validation accuracy', sep='\t')
-   for epoch in range(session.n_epochs):
-      if check_abort():
-         break
-      session.model.train()
-      train_loss, train_accy = train_step(session)
-      session.model.eval()
-      valid_loss, valid_accy = valid_step(session)
-      print(epoch+1, train_loss, train_accy,
+    for epoch in range(session.n_epochs):
+        if check_abort():
+            break
+        session.model.train()
+        train_loss, train_accy = train_step(session)
+        session.model.eval()
+        valid_loss, valid_accy = valid_step(session)
+        print(epoch+1, train_loss, train_accy,
                      valid_loss, valid_accy, sep='\t')
+        writer.add_scalar("train loss", train_loss, epoch)
+        writer.add_scalar("validation loss", valid_loss, epoch)
+        writer.add_scalar("train accuracy", train_accy, epoch)
+        writer.add_scalar("validation accuracy", valid_accy, epoch)
+    return valid_loss
 
 
 def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataloader, num_epochs, PAD_IDX, torch_seed, learning_rate, log_dir, batch_size, INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX):
@@ -145,25 +150,14 @@ def train_transformer(model, loss_fn, optimizer, train_dataloader, eval_dataload
     session.trainloader = train_dataloader
     session.validloader = eval_dataloader
     session.PAD_IDX = PAD_IDX
-    run_training(session)
+    val_loss = run_training(session, writer)
+    writer.add_hparams({
+        "num_epochs": num_epochs,
+        "learning_rate": learning_rate,
+        "loss_function": type(loss_fn).__name__,
+        "optimizer_encoder": type(optimizer).__name__,
+    }, {
+        "hparam/validation loss": val_loss
+    })
+    writer.close()
     return model
-
-    
-def evaluate(model, loss_fn, val_dataloader, PAD_IDX):
-    model.eval()
-    losses = 0
-
-    for src, tgt in val_dataloader:
-
-        src = src.to(device)
-        tgt = tgt.to(device)
-        
-        tgt_input = tgt[:-1, :]
-        src_mask, tgt_mask, src_padding_mask, tgt_padding_mask = create_mask(src, tgt_input, PAD_IDX)
-        logits = model(src, tgt_input, src_mask, tgt_mask, src_padding_mask, tgt_padding_mask, src_padding_mask)
-        
-        tgt_out = tgt[1:, :]
-        loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
-        losses += loss.item()
-
-    return losses / len(val_dataloader)
