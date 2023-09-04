@@ -1,5 +1,29 @@
 # A Parser for Biblical Hebrew and Syriac Morphology
-This repository contains code and data for the OpenSSI Hebrew/Syriac morphology project of the [Netherlands eScience Center](https://www.esciencecenter.nl/) and the [Eep Talstra Centre for Bible and Computer (ETCBC)](www.etcbc.nl)) of the [Faculty of Religion and Theology, Vrije Universiteit](https://frt.vu.nl/nl/index.aspx) entitled “Morphological Parser for Inflectional Languages Using Deep Learning”. The project is based on the experience that has been built up in more than four decades of the computational linguistic analysis of the Hebrew Bible at the Eep Talstra Centre for Bible and Computer (ETCBC) and some of the unique aspects of the encoding of the ETCBC linguistic database of the Hebrew Bible. These unique aspects do justice to the fact that Biblical Hebrew, like many other Semitic languages, is an inflectional language with a rich morphology. What can be said with one word in Biblical Hebrew sometimes needs five or six words in an English translation. Therefore, to add linguistic annotations to a text, it is better to encode the smaller parts of a word (morphemes) rather than the complete words (as is usually done in, e.g., the preparation of English or Dutch text corpora). This, however, is very labour-intensive. The new project will endeavour to use Machine Learning to automate this process for Hebrew and Syriac texts.
+This repository contains code and data for the OpenSSI Hebrew/Syriac morphology project of the [Netherlands eScience Center](https://www.esciencecenter.nl/) and the [Eep Talstra Centre for Bible and Computer (ETCBC)](www.etcbc.nl)) of the [Faculty of Religion and Theology, Vrije Universiteit](https://frt.vu.nl/nl/index.aspx) entitled “Morphological Parser for Inflectional Languages Using Deep Learning”. The project is based on the experience that has been built up in more than four decades of the computational linguistic analysis of the Hebrew Bible at the Eep Talstra Centre for Bible and Computer (ETCBC) and some of the unique aspects of the encoding of the ETCBC linguistic database of the Hebrew Bible. These unique aspects do justice to the fact that Biblical Hebrew, like many other Semitic languages, is an inflectional language with a rich morphology. What can be said with one word in Syriac or Biblical Hebrew sometimes needs five or six words in an English translation. Therefore, to add linguistic annotations to a text, it is better to encode the smaller parts of a word (morphemes) rather than the complete words (as is usually done in, e.g., the preparation of English or Dutch text corpora). This, however, is very labour-intensive. The new project will endeavour to use Machine Learning to automate this process for Hebrew and Syriac texts.
+
+# Paper
+You can find the results of a number of our experiments in:
+
+Martijn Naaijer, Constantijn Sikkel, Mathias Coeckelberghs, Jisk Attema, Willem Th. van Peursen, A Transormer-based Parser for Syriac Morpology, 2023, To be published.
+
+After cloning the repo and installing the dependencies, you can reproduce the experiments described in the paper in the following way:
+
+For training on Syriac data:
+
+`python main.py -mo=train -i=s2-in -o=s2-out -ep=30 -l=7 -lr=0.0001 -et=True`
+
+In the paper, we vary the number of epochs (ep).
+
+For training on vocalized Hebrew and Syriac with mixed data:
+
+`python main.py -mo=train -i=t-in_voc -o=t-out -i2=s-in -o2=s-out -ep=30 -l=7 -lr=0.0001 -et=True`
+
+You can train on unvocalized Hebrew with the dataset t-in_con.
+For sequential training on vocalized Hebrew and Syriac:
+
+`python main.py -mo=train -i=t-in_voc -o=t-out -i2=s-in -o2=s-out -ep=10 -ep2=30 -l=7 -lr=0.0001 -et=True`
+
+Here, you can vary the number of epochs as we do in the paper with the argument ep2.
 
 # Dependencies
 You install most dependencies with:
