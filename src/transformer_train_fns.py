@@ -33,11 +33,12 @@ def create_mask(src, tgt, PAD_IDX):
     src_seq_len = src.shape[0]
     tgt_seq_len = tgt.shape[0]
 
-    tgt_mask = generate_square_subsequent_mask(tgt_seq_len)
+    tgt_mask = generate_square_subsequent_mask(tgt_seq_len).type(torch.bool)
     src_mask = torch.zeros((src_seq_len, src_seq_len),device=device).type(torch.bool)
 
     src_padding_mask = (src == PAD_IDX).transpose(0, 1)
     tgt_padding_mask = (tgt == PAD_IDX).transpose(0, 1)
+
     return src_mask, tgt_mask, src_padding_mask, tgt_padding_mask
     
 class TrainingSession():
@@ -118,6 +119,7 @@ def valid_step(session):
 def run_training(session, writer):
     print('Epoch', 'Training loss', 'Training accuracy',
                 'Validation loss', 'Validation accuracy', sep='\t')
+    
     for epoch in range(session.n_epochs):
         if check_abort():
             break
@@ -125,8 +127,6 @@ def run_training(session, writer):
         train_loss, train_accy = train_step(session)
         session.model.eval()
         valid_loss, valid_accy = valid_step(session)
-        print(epoch+1, train_loss, train_accy,
-                     valid_loss, valid_accy, sep='\t')
         writer.add_scalar("train loss", train_loss, epoch)
         writer.add_scalar("validation loss", valid_loss, epoch)
         writer.add_scalar("train accuracy", train_accy, epoch)
