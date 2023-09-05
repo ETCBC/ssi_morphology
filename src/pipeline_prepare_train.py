@@ -8,71 +8,40 @@ from data import collate_transformer_fn, DataMerger, DataReader, HebrewWords
 from transformer_train_fns import initialize_transformer_model, train_transformer
 from evaluate_transformer import evaluate_transformer_model
 
-class PipeLineTrain:
+        
+class PipeLinePrepare:
     def __init__(self, 
                  input_file: str, 
-                 output_file: str, 
+                 output_file: str,
+                 input_file2: str, 
+                 output_file2: str, 
                  length: int, 
                  INPUT_WORD_TO_IDX: dict, 
-                 OUTPUT_WORD_TO_IDX: dict, 
-                 nel: int,
-                 ndl: int,
-                 emb: int,
-                 nh: int,
-                 ffn: int,
-                 dr: float,
-                 batch_size: int,
-                 epochs: int,
-                 learning_rate: float,
-                 model_path: str,
-                 evaluation_results_path: str,
-                 input_file2: str, 
-                 output_file2: str,
-                 epochs2: int,
-                 beam_size: int,
-                 beam_alpha: float,
-                 val_plus_test_size: float
+                 OUTPUT_WORD_TO_IDX: dict,
+                 batch_size: int, 
+                 val_plus_test_size: int
                  ):
-                 
         self.input_file = input_file
         self.output_file = output_file
+        self.input_file2 = input_file2 
+        self.output_file2 = output_file2
         self.length = length
         self.INPUT_WORD_TO_IDX = INPUT_WORD_TO_IDX
         self.OUTPUT_WORD_TO_IDX = OUTPUT_WORD_TO_IDX
-        self.nel = nel
-        self.ndl = ndl
-        self.emb = emb
-        self.nh = nh
-        self.ffn = ffn
-        self.dr = dr
         self.batch_size = batch_size
-        self.epochs = epochs
         self.val_plus_test_size = val_plus_test_size
-        self.learning_rate = learning_rate
-        self.model_path = model_path
-        self.evaluation_results_path = evaluation_results_path
-        self.input_file2 = input_file2
-        self.output_file2 = output_file2
-        self.epochs2 = epochs2
-        self.beam_size = beam_size
-        self.beam_alpha = beam_alpha
-        self.torch_seed = 42
-        self.model_name = f'seq2seq_{self.length}seqlen_{self.learning_rate}lr_{self.epochs}_{self.epochs2}epochs_{self.emb}embedsize_{self.nh}nhead_{self.nel}nenclayers_{self.ndl}numdeclayers_transformer.pth'
-        self.log_dir = f'runs/{self.input_file}_{self.output_file}/{self.length}seq_len_{self.learning_rate}lr_{self.epochs}_{self.epochs2}epochs_{self.emb}embsize_{self.nh}nhead_{self.nel}nenclayers_{self.ndl}numdeclayers_transformer'
         self.model_path_full = None
 
         self.data_set_one = DataReader(input_file, output_file, length, self.val_plus_test_size, INPUT_WORD_TO_IDX, OUTPUT_WORD_TO_IDX)
         
-        if input_file2 and output_file2:
-            self.data_set_two = DataReader(input_file2, output_file2, length, self.val_plus_test_size, self.INPUT_WORD_TO_IDX, self.OUTPUT_WORD_TO_IDX)
+        if self.input_file2 and self.output_file2:
+            self.data_set_two = DataReader(self.input_file2, self.output_file2, length, self.val_plus_test_size, self.INPUT_WORD_TO_IDX, self.OUTPUT_WORD_TO_IDX)
             self.INPUT_WORD_TO_IDX = self.data_set_two.INPUT_WORD_TO_IDX
             self.OUTPUT_WORD_TO_IDX = self.data_set_two.OUTPUT_WORD_TO_IDX
             
         self.INPUT_IDX_TO_WORD = {v:k for k,v in self.INPUT_WORD_TO_IDX.items()}
         self.OUTPUT_IDX_TO_WORD = {v:k for k,v in self.OUTPUT_WORD_TO_IDX.items()}
         
-        self.src_vocab_size = len(self.INPUT_WORD_TO_IDX)+2
-        self.tgt_vocab_size = len(self.OUTPUT_WORD_TO_IDX)+2
     
     def make_pytorch_datasets(self, data):
         data_set_train = HebrewWords(data.X_train, data.y_train, self.INPUT_WORD_TO_IDX, self.OUTPUT_WORD_TO_IDX)
@@ -100,6 +69,61 @@ class PipeLineTrain:
         train_dataloader = DataLoader(train_data, batch_size=self.batch_size, collate_fn=collate_transformer_fn)
         eval_dataloader = DataLoader(eval_data, batch_size=self.batch_size, collate_fn=collate_transformer_fn)
         return train_dataloader, eval_dataloader
+        
+
+class PipeLineTrain:
+    def __init__(self,
+                 input_file: str, 
+                 output_file: str,
+                 input_file2: str, 
+                 output_file2: str,
+                 INPUT_WORD_TO_IDX: dict, 
+                 OUTPUT_WORD_TO_IDX: dict, 
+                 nel: int,
+                 ndl: int,
+                 emb: int,
+                 nh: int,
+                 ffn: int,
+                 dr: float,
+                 batch_size: int,
+                 epochs: int,
+                 learning_rate: float,
+                 model_path: str,
+                 evaluation_results_path: str,
+                 epochs2: int,
+                 beam_size: int,
+                 beam_alpha: float,
+                 length: int
+                 ):
+        self.input_file = input_file,
+        self.output_file = output_file,
+        self.input_file2 = input_file2
+        self.output_file2 = output_file2
+        self.INPUT_WORD_TO_IDX = INPUT_WORD_TO_IDX, 
+        self.OUTPUT_WORD_TO_IDX = OUTPUT_WORD_TO_IDX,
+        self.nel = nel
+        self.ndl = ndl
+        self.emb = emb
+        self.nh = nh
+        self.ffn = ffn
+        self.dr = dr
+        self.batch_size = batch_size
+        self.epochs = epochs
+        self.learning_rate = learning_rate
+        self.model_path = model_path
+        self.evaluation_results_path = evaluation_results_path
+        self.input_file2 = input_file2
+        self.output_file2 = output_file2
+        self.epochs2 = epochs2
+        self.beam_size = beam_size
+        self.beam_alpha = beam_alpha
+        self.length = length
+        self.torch_seed = 42
+        self.model_name = f'seq2seq_{self.length}seqlen_{self.learning_rate}lr_{self.epochs}_{self.epochs2}epochs_{self.emb}embedsize_{self.nh}nhead_{self.nel}nenclayers_{self.ndl}numdeclayers_transformer.pth'
+        self.log_dir = f'runs/{self.input_file}_{self.output_file}/{self.length}seq_len_{self.learning_rate}lr_{self.epochs}_{self.epochs2}epochs_{self.emb}embsize_{self.nh}nhead_{self.nel}nenclayers_{self.ndl}numdeclayers_transformer'
+        
+        self.src_vocab_size = len(self.INPUT_WORD_TO_IDX)+2
+        self.tgt_vocab_size = len(self.OUTPUT_WORD_TO_IDX)+2
         
     def initialize_model(self):
         transformer = initialize_transformer_model(self.nel, self.ndl, self.emb, self.nh, self.src_vocab_size, self.tgt_vocab_size, self.ffn, self.dr)

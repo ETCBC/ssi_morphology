@@ -9,7 +9,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from enums import TrainingType
-from pipeline import PipeLineTrain
+from pipeline_prepare_train import PipeLinePrepare, PipeLineTrain
 from pipeline_predict import PipeLinePredict
 from utils import str2bool
 
@@ -120,10 +120,23 @@ def main(args):
                           'SOS': SOS_token,
                           'EOS': EOS_token
                          }
-    
-        pipeline = PipeLineTrain(args.i, 
-                        args.o, 
-                        args.l, 
+        
+        pipeline_prepare = PipeLinePrepare(
+                        args.i, 
+                        args.o,
+                        args.i2,
+                        args.o2,
+                        args.l,
+                        INPUT_WORD_TO_IDX,
+                        OUTPUT_WORD_TO_IDX,
+                        args.b,
+                        val_plus_test_size=0.3)
+        
+        pipeline_train = PipeLineTrain(
+                        args.i, 
+                        args.o,
+                        args.i2,
+                        args.o2,
                         INPUT_WORD_TO_IDX, 
                         OUTPUT_WORD_TO_IDX, 
                         args.nel, 
@@ -137,48 +150,46 @@ def main(args):
                         args.lr,  
                         MODEL_PATH,
                         EVALUATION_RESULTS_PATH,
-                        args.i2,
-                        args.o2, 
                         args.ep2,
                         args.sz,
                         args.ba,
-                        val_plus_test_size=0.3
+                        args.l
                         )
 
         if training_type == TrainingType.TWO_DATASETS_SIMULTANEOUSLY:
-            train_data_X, train_data_y, val_data_X, val_data_y = pipeline.merge_datasets()
-            hebrew_train, hebrew_val, test_set = pipeline.make_pytorch_merged_datasets(train_data_X, 
+            train_data_X, train_data_y, val_data_X, val_data_y = pipeline_prepare.merge_datasets()
+            hebrew_train, hebrew_val, test_set = pipeline_prepare.make_pytorch_merged_datasets(train_data_X, 
                                                                                    train_data_y, 
                                                                                    val_data_X, 
                                                                                    val_data_y, 
-                                                                                   pipeline.data_set_two.X_test, 
-                                                                                   pipeline.data_set_two.y_test)
+                                                                                   pipeline_prepare.data_set_two.X_test, 
+                                                                                   pipeline_prepare.data_set_two.y_test)
         elif training_type == TrainingType.TWO_DATASETS_SEQUENTIALLY:
-            hebrew_train, hebrew_val, _ = pipeline.make_pytorch_datasets(pipeline.data_set_one)
-            syr_train, syr_val, test_set = pipeline.make_pytorch_datasets(pipeline.data_set_two)
+            hebrew_train, hebrew_val, _ = pipeline_prepare.make_pytorch_datasets(pipeline_prepare.data_set_one)
+            syr_train, syr_val, test_set = pipeline_prepare.make_pytorch_datasets(pipeline_prepare.data_set_two)
         elif training_type == TrainingType.ONE_DATASET:
-            hebrew_train, hebrew_val, test_set = pipeline.make_pytorch_datasets(pipeline.data_set_one)
+            hebrew_train, hebrew_val, test_set = pipeline_prepare.make_pytorch_datasets(pipeline_prepare.data_set_one)
 
         # Train model on (first) dataset
-        train_dataloader, eval_dataloader = pipeline.make_data_loader(hebrew_train, hebrew_val)
-        transformer = pipeline.initialize_model()
+        train_dataloader, eval_dataloader = pipeline_prepare.make_data_loader(hebrew_train, hebrew_val)
+        transformer = pipeline_train.initialize_model()
         loss_fn = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
         optimizer = optim.Adam(transformer.parameters(), lr=args.lr, betas=(0.9, 0.98), eps=1e-9, weight_decay=args.wd)
-        trained_transformer = pipeline.train_model(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, args.ep, PAD_IDX)
+        trained_transformer = pipeline_train.train_model(transformer, loss_fn, optimizer, train_dataloader, eval_dataloader, args.ep, PAD_IDX)
     
         # Save and evaluate model
         if training_type in {TrainingType.TWO_DATASETS_SIMULTANEOUSLY, TrainingType.ONE_DATASET}:
-            pipeline.save_model(trained_transformer, training_type.name)
+            pipeline_train.save_model(trained_transformer, training_type.name)
             if args.et:
-                pipeline.evaluate_on_test_set(test_set, training_type.name)
+                pipeline_train.evaluate_on_test_set(test_set, training_type.name)
          
         # Train model on second dataset, save model and evaluate it.
         elif training_type == TrainingType.TWO_DATASETS_SEQUENTIALLY:
-            train_dataloader_s, eval_dataloader_s = pipeline.make_data_loader(syr_train, syr_val)
-            trained_transformer = pipeline.train_model(trained_transformer, loss_fn, optimizer, train_dataloader_s, eval_dataloader_s, args.ep2, PAD_IDX)
-            pipeline.save_model(trained_transformer, training_type)
+            train_dataloader_s, eval_dataloader_s = pipeline_prepare.make_data_loader(syr_train, syr_val)
+            trained_transformer = pipeline_train.train_model(trained_transformer, loss_fn, optimizer, train_dataloader_s, eval_dataloader_s, args.ep2, PAD_IDX)
+            pipeline_train.save_model(trained_transformer, training_type)
             if args.et:
-                pipeline.evaluate_on_test_set(test_set, training_type.name)
+                pipeline_train.evaluate_on_test_set(test_set, training_type.name)
 
 
 if __name__ == '__main__':
