@@ -15,6 +15,18 @@ from utils import str2bool
 
 from config import PAD_IDX, SOS_token, EOS_token, MODEL_PATH, EVALUATION_RESULTS_PATH
 
+INPUT_WORD_TO_IDX = {
+                    'PAD': PAD_IDX,
+                    'SOS': SOS_token,
+                    'EOS': EOS_token
+                    }
+
+OUTPUT_WORD_TO_IDX = {
+                    'PAD': PAD_IDX,
+                    'SOS': SOS_token,
+                    'EOS': EOS_token
+                    }
+
 
 def main(args):
     """
@@ -107,19 +119,6 @@ def main(args):
             training_type = TrainingType.ONE_DATASET
         
         assert training_type
-
-    
-        INPUT_WORD_TO_IDX = {
-                         'PAD': PAD_IDX,
-                         'SOS': SOS_token,
-                         'EOS': EOS_token
-                        }
-
-        OUTPUT_WORD_TO_IDX = {
-                          'PAD': PAD_IDX,
-                          'SOS': SOS_token,
-                          'EOS': EOS_token
-                         }
         
         pipeline_prepare = PipeLinePrepare(
                         args.i, 
@@ -137,8 +136,9 @@ def main(args):
                         args.o,
                         args.i2,
                         args.o2,
-                        INPUT_WORD_TO_IDX, 
-                        OUTPUT_WORD_TO_IDX, 
+                        pipeline_prepare.INPUT_WORD_TO_IDX, 
+                        pipeline_prepare.OUTPUT_WORD_TO_IDX,
+                        pipeline_prepare.OUTPUT_IDX_TO_WORD, 
                         args.nel, 
                         args.ndl, 
                         args.emb, 

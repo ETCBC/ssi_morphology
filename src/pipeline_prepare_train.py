@@ -78,7 +78,8 @@ class PipeLineTrain:
                  input_file2: str, 
                  output_file2: str,
                  INPUT_WORD_TO_IDX: dict, 
-                 OUTPUT_WORD_TO_IDX: dict, 
+                 OUTPUT_WORD_TO_IDX: dict,
+                 OUTPUT_IDX_TO_WORD: dict, 
                  nel: int,
                  ndl: int,
                  emb: int,
@@ -95,12 +96,13 @@ class PipeLineTrain:
                  beam_alpha: float,
                  length: int
                  ):
-        self.input_file = input_file,
-        self.output_file = output_file,
+        self.input_file = input_file
+        self.output_file = output_file
         self.input_file2 = input_file2
         self.output_file2 = output_file2
-        self.INPUT_WORD_TO_IDX = INPUT_WORD_TO_IDX, 
-        self.OUTPUT_WORD_TO_IDX = OUTPUT_WORD_TO_IDX,
+        self.INPUT_WORD_TO_IDX = INPUT_WORD_TO_IDX
+        self.OUTPUT_WORD_TO_IDX = OUTPUT_WORD_TO_IDX
+        self.OUTPUT_IDX_TO_WORD = OUTPUT_IDX_TO_WORD
         self.nel = nel
         self.ndl = ndl
         self.emb = emb
@@ -112,8 +114,6 @@ class PipeLineTrain:
         self.learning_rate = learning_rate
         self.model_path = model_path
         self.evaluation_results_path = evaluation_results_path
-        self.input_file2 = input_file2
-        self.output_file2 = output_file2
         self.epochs2 = epochs2
         self.beam_size = beam_size
         self.beam_alpha = beam_alpha
@@ -134,8 +134,7 @@ class PipeLineTrain:
                                           eval_dataloader, epochs, PAD_IDX, self.torch_seed, 
                                           self.learning_rate, self.log_dir, self.batch_size, self.INPUT_WORD_TO_IDX, 
                                           self.OUTPUT_WORD_TO_IDX)
-        return trained_model
-        
+        return trained_model        
         
     def save_model(self, trained_model, training_type):
         """
