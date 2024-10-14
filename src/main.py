@@ -176,7 +176,7 @@ def main(args):
         elif training_type == TrainingType.TWO_DATASETS_SEQUENTIALLY:
             train_dataloader_s, eval_dataloader_s = pipeline.make_data_loader(syr_train, syr_val)
             trained_transformer = pipeline.train_model(trained_transformer, loss_fn, optimizer, train_dataloader_s, eval_dataloader_s, args.ep2, PAD_IDX)
-            pipeline.save_model(trained_transformer, training_type)
+            pipeline.save_model(trained_transformer, training_type.name)
             if args.et:
                 pipeline.evaluate_on_test_set(test_set, training_type.name)
 

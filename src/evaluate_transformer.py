@@ -79,7 +79,9 @@ def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbo
         sequences = ordered[:beam_size]
         if all([seq[0][-1].item() == end_symbol for seq in sequences]):
             break
-            
+    print('NEW')
+    print(sequences)
+    print(sequences)
     best = sorted(sequences, key=lambda tup:tup[1], reverse=True)[0][0]
     return best
 
