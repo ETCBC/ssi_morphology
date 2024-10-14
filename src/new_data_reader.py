@@ -23,7 +23,7 @@ class NewDataReader:
         self.data_ids2text = {}
         self.data_ids2labels = {}
         self.prepared_data = {}
-
+        
         self.read_data()
         self.make_sequences()
 
