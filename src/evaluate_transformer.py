@@ -32,15 +32,15 @@ def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_sym
 def sequence_length_penalty(length: int, alpha: float=0.75) -> float:
     return ((5 + length) / (5 + 1)) ** alpha
     
-def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int, beam_size: int, alpha:int=0.75):
+def beam_search(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int, beam_size: int, alpha:int=0.75):
     """Function to generate output sequence using beam search algorithm.
     If the beam size is 0, greedy decoding will be applied.
     """
-    src, src_mask = src.to(device), src_mask.to(device)
+    #src, src_mask = src.to(device), src_mask.to(device)
     memory = (model.encode(src, src_mask)).to(device)
 
-    if not beam_size:
-        return greedy_decode(model, src, src_mask, max_len, start_symbol, end_symbol)
+    #if not beam_size:
+    #    return greedy_decode(model, src, src_mask, max_len, start_symbol, end_symbol)
     
     sequences = [[torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device), 0.0]]
     
@@ -74,26 +74,33 @@ def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbo
                 candidate = [character_idcs, score + char_score]
 
                 all_candidates.append(candidate)
-        ordered = sorted(all_candidates, key=lambda tup:tup[1], reverse=True)
+        ordered_seqs_with_scores = sorted(all_candidates, key=lambda tup:tup[1], reverse=True)[:beam_size]
                
-        sequences = ordered[:beam_size]
-        if all([seq[0][-1].item() == end_symbol for seq in sequences]):
+        #ordered_seqs_with_scores = ordered[:beam_size]
+        if all([seq[0][-1].item() == end_symbol for seq in ordered_seqs_with_scores]):
             break
     print('NEW')
-    print(sequences)
-    print(sequences)
-    best = sorted(sequences, key=lambda tup:tup[1], reverse=True)[0][0]
-    return best
+    ordered_seqs_without_beam_scores = [seq[0] for seq in ordered_seqs_with_scores]
+    print(ordered_seqs_without_beam_scores)
+    #best = sorted(sequences, key=lambda tup:tup[1], reverse=True)[0][0]
+    return ordered_seqs_without_beam_scores
 
 
 def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD: dict, OUTPUT_WORD_TO_IDX: dict, beam_size: int, beam_alpha: float):
     model.eval()
-    src = encoded_sentence.view(-1, 1)
+    src = encoded_sentence.view(-1, 1).to(device)
     num_tokens = src.shape[0]
-    src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool)
-    tgt_tokens = beam_decode(
+    src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool).to(device)
+
+    if not beam_size:
+        tgt_tokens = greedy_decode(model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX['SOS'], OUTPUT_WORD_TO_IDX['EOS'])
+        return ''.join([OUTPUT_IDX_TO_WORD[idx] for idx in list(tgt_tokens.cpu().numpy())]).replace('SOS', '').replace('EOS', '')
+    
+    tgt_tokens_list = beam_search(
         model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX['SOS'], OUTPUT_WORD_TO_IDX['EOS'], beam_size).flatten()
     
+    # TODO: IMPLEMENT DECODE OF BEAM
+
     return ''.join([OUTPUT_IDX_TO_WORD[idx] for idx in list(tgt_tokens.cpu().numpy())]).replace('SOS', '').replace('EOS', '')
     
     
