@@ -4,3 +4,16 @@ class TrainingType(Enum):
     TWO_DATASETS_SEQUENTIALLY = 1
     TWO_DATASETS_SIMULTANEOUSLY = 2
     ONE_DATASET = 3
+
+
+class Language(Enum):
+    syriac = 1
+
+
+class WordGrammarVersion(Enum):
+    SSI = 1
+
+class APICodes:
+    CORRECT = 1
+    NOTCHECKED = 2
+    NOTCORRECT = 3

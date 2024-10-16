@@ -1,5 +1,8 @@
 python-Levenshtein==0.12.2
 PyYAML==6.0
+requests
 scikit-learn==1.1.2
 sly==0.5
 tensorboard==2.10.0
+urllib3
+
