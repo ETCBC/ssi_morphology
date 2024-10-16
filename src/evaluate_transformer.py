@@ -7,6 +7,7 @@ from config import device
 from data import mc_expand
 from model_transformer import Seq2SeqTransformer
 from transformer_train_fns import generate_square_subsequent_mask
+from wla_api import check_predictions
 
 
 def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int):
@@ -82,8 +83,12 @@ def beam_search(model: torch.nn.Module, src, src_mask, max_len: int, start_symbo
     print('NEW')
     ordered_seqs_without_beam_scores = [seq[0] for seq in ordered_seqs_with_scores]
     print(ordered_seqs_without_beam_scores)
-    #best = sorted(sequences, key=lambda tup:tup[1], reverse=True)[0][0]
     return ordered_seqs_without_beam_scores
+
+
+def num_to_char(output_idx_to_word_dict, tokens):
+    character_string = ''.join([output_idx_to_word_dict[idx] for idx in list(tokens.cpu().numpy())]).replace('SOS', '').replace('EOS', '')
+    return character_string
 
 
 def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD: dict, OUTPUT_WORD_TO_IDX: dict, beam_size: int, beam_alpha: float):
@@ -94,14 +99,16 @@ def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD:
 
     if not beam_size:
         tgt_tokens = greedy_decode(model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX['SOS'], OUTPUT_WORD_TO_IDX['EOS'])
-        return ''.join([OUTPUT_IDX_TO_WORD[idx] for idx in list(tgt_tokens.cpu().numpy())]).replace('SOS', '').replace('EOS', '')
+        return num_to_char(OUTPUT_IDX_TO_WORD, tgt_tokens)
     
     tgt_tokens_list = beam_search(
         model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX['SOS'], OUTPUT_WORD_TO_IDX['EOS'], beam_size).flatten()
     
     # TODO: IMPLEMENT DECODE OF BEAM
+    char_string_list = [num_to_char(OUTPUT_IDX_TO_WORD, numerical_seq) for numerical_seq in tgt_tokens_list]
+    check_predictions()
 
-    return ''.join([OUTPUT_IDX_TO_WORD[idx] for idx in list(tgt_tokens.cpu().numpy())]).replace('SOS', '').replace('EOS', '')
+    return character_string
     
     
 def evaluate_transformer_model(eval_path: str, 

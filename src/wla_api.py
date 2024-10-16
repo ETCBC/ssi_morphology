@@ -3,17 +3,19 @@ import requests
 from urllib3.util import Retry
 
 from config import wla_url
+from enums import APICodes
 
 
-class WordLevelCorrectnessChecker:
-    def __init__(self, wla_url, language, version):
+class JakobCaller:
+    def __init__(self, wla_url, language, version, predictions):
         self.url = wla_url
-        self.language = language #"syriac"
-        self.version = version #"SSI"
+        self.language = language
+        self.version = version
         self.request = "analyse"
         self.mode = "text"
+        self.predictions = predictions
 
-    def make_payload(self, prediction):
+    def make_payload(self):
         """prediction: list[str] , contains predicted words"""
         payload = json.dumps(
                         {
@@ -21,7 +23,7 @@ class WordLevelCorrectnessChecker:
                         "version": self.version,
                         "request": self.request,
                         "mode": self.mode,
-                        "data": prediction
+                        "data": self.predictions
                         }
                             )
         return payload
@@ -36,10 +38,48 @@ class WordLevelCorrectnessChecker:
             adapter = requests.adapters.HTTPAdapter(max_retries=retry)
             session = requests.Session()
             session.mount('https://', adapter)
-            r = session.post(self.url, data=payload, timeout=0.001)
+            response = session.post(self.url, data=payload, timeout=0.001)
 
         except Exception as e:
             print(e)
             return('API Error')
-        return res
+        return response
+    
 
+class GrammarCorrectnessChecker:
+    """
+    Approach:
+       Make api call with list of predicted strings.
+       The first one that has grammatically correct value back is returned.
+       If none of the predicted values is correct, the first in the list is returned with 'E' (error) attached to it.
+    """
+    def __init__(self, predictions, api_response):
+        self.predictions = predictions
+        self.api_response = api_response
+
+    def load_response(self):
+        return json.loads(self.api_response.text)
+    
+    def check_grammatical_correctness(self):
+        results = self.api_response_dict.get('result', [])
+        if not results:
+            return self.predictions[0], APICodes['NOTCHECKED'].name
+        else:
+            for graphical_unit_analysis, graphical_unit_prediction in zip(self.api_response_dict, self.predictions):
+                errors_in_graphical_unit = all(['error' in word_analysis for word_analysis in graphical_unit_analysis])
+                if not errors_in_graphical_unit:
+                    return graphical_unit_prediction, APICodes
+            return self.predictions[0], APICodes['NOTCORRECT'].name
+
+def check_predictions(wla_url, language, version, predictions):
+    jakob_caller = JakobCaller(wla_url, language, version, predictions)
+    payload = jakob_caller.make_payload()
+    response = jakob_caller.make_api_request(payload)
+
+    if response.status_code != 200:
+        return predictions[0], APICodes['NOTCHECKED'].name
+    
+    correctness_checker = GrammarCorrectnessChecker(predictions, response)
+    loaded_response = correctness_checker.load_response()
+    prediction, api_code = correctness_checker.check_grammatical_correctness(loaded_response)
+    return prediction, api_code
