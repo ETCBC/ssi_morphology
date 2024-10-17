@@ -125,7 +125,10 @@ output: output_file_name
 predict_idx: idx
 beam_size: beam_size
 beam_alpha: beam_alpha
+language: syriac
+version: SSI
 ```
+The final two arguments, language and version, are optional. The language is simply the language in which the text is written, 
 
 You can run a prediction with:
 
