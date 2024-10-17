@@ -31,9 +31,9 @@ class JakobCaller:
     def make_api_request(self, payload):
         try:
             retry_strategy = Retry(
-                                   total=3,
-                                   backoff_factor=2,
-                                   status_forcelist=[429, 500, 502, 503, 504]
+                                total=3,
+                                backoff_factor=2,
+                                status_forcelist=[429, 500, 502, 503, 504]
                                    )
             
             adapter = requests.adapters.HTTPAdapter(max_retries=retry_strategy)
@@ -71,6 +71,7 @@ class GrammarCorrectnessChecker:
                 if not errors_in_graphical_unit:
                     return graphical_unit_prediction, APICodes['CORRECT'].name
             return self.predictions[0], APICodes['NOTCORRECT'].name
+
 
 def check_predictions(wla_url, language, version, predictions):
     jakob_caller = JakobCaller(wla_url, language, version, predictions)
