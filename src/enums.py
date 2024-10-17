@@ -13,7 +13,7 @@ class Language(Enum):
 class WordGrammarVersion(Enum):
     SSI = 1
 
-class APICodes:
+class APICodes(Enum):
     CORRECT = 1
     NOTCHECKED = 2
     NOTCORRECT = 3
