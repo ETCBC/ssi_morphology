@@ -1,6 +1,6 @@
 import json
 import requests
-from urllib3.util import Retry
+from requests.packages.urllib3.util.retry import Retry
 
 from config import wla_url
 from enums import APICodes
@@ -30,15 +30,16 @@ class JakobCaller:
 
     def make_api_request(self, payload):
         try:
-            retry = Retry(
-                total=3,
-                backoff_factor=2,
-                status_forcelist=[429, 500, 502, 503, 504],
-                )
-            adapter = requests.adapters.HTTPAdapter(max_retries=retry)
-            session = requests.Session()
-            session.mount('https://', adapter)
-            response = session.post(self.url, data=payload, timeout=0.001)
+            retry_strategy = Retry(
+                                   total=3,
+                                   backoff_factor=2,
+                                   status_forcelist=[429, 500, 502, 503, 504]
+                                   )
+            
+            adapter = requests.adapters.HTTPAdapter(max_retries=retry_strategy)
+            http = requests.Session()
+            http.mount('https://', adapter)
+            response = http.post(self.url, data=payload)
 
         except Exception as e:
             print(e)
@@ -60,15 +61,15 @@ class GrammarCorrectnessChecker:
     def load_response(self):
         return json.loads(self.api_response.text)
     
-    def check_grammatical_correctness(self):
-        results = self.api_response_dict.get('result', [])
+    def check_grammatical_correctness(self, response_dict):
+        results = response_dict.get('result', [])
         if not results:
             return self.predictions[0], APICodes['NOTCHECKED'].name
         else:
-            for graphical_unit_analysis, graphical_unit_prediction in zip(self.api_response_dict, self.predictions):
-                errors_in_graphical_unit = all(['error' in word_analysis for word_analysis in graphical_unit_analysis])
+            for graphical_unit_analysis, graphical_unit_prediction in zip(results, self.predictions):
+                errors_in_graphical_unit = all(['error' in word_analysis for word_analysis in graphical_unit_analysis[0]])
                 if not errors_in_graphical_unit:
-                    return graphical_unit_prediction, APICodes
+                    return graphical_unit_prediction, APICodes['CORRECT'].name
             return self.predictions[0], APICodes['NOTCORRECT'].name
 
 def check_predictions(wla_url, language, version, predictions):
@@ -81,5 +82,6 @@ def check_predictions(wla_url, language, version, predictions):
     
     correctness_checker = GrammarCorrectnessChecker(predictions, response)
     loaded_response = correctness_checker.load_response()
+    
     prediction, api_code = correctness_checker.check_grammatical_correctness(loaded_response)
-    return prediction, api_code
+    return f'{prediction}\t{api_code}'
