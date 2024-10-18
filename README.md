@@ -115,6 +115,7 @@ You can make predictions using a trained model on new data, for which you need t
       Next to that, it contains the sequence length used to slice the text, and 2 dictionaries that are used to convert the input text to integers, and integers to output text.
 - ad 4. The name of the output file is optional in the YAML. If no output filename is given, the results are written to standard output. You can also indicate the index in the sequence for which you want the prediction (If this is not indicated, the predict_idx is set to 0.), the beam size (0 for greedy decoding), and the beam alpha value. The YAML file has the following structure:
 
+- ad 5. The final two arguments, language and version, are optional. If these arguments are added to the file, it will be checked whether the prediction of word is a grammatically correct, according to the ETCBC word grammar conventions. "language" is the language in which the text is written, and "version" is the version of the word grammar. Presently, it can only be used for the combination "syriac" and "SSI".
 ```
 model_info:
     folder: name_of_folder_containing_model_and_config
@@ -128,7 +129,6 @@ beam_alpha: beam_alpha
 language: syriac
 version: SSI
 ```
-The final two arguments, language and version, are optional. The language is simply the language in which the text is written, 
 
 You can run a prediction with:
 

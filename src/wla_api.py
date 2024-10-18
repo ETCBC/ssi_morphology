@@ -83,6 +83,5 @@ def check_predictions(wla_url, language, version, predictions):
     
     correctness_checker = GrammarCorrectnessChecker(predictions, response)
     loaded_response = correctness_checker.load_response()
-    
     prediction, api_code = correctness_checker.check_grammatical_correctness(loaded_response)
     return f'{prediction}\t{api_code}'
