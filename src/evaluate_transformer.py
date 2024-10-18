@@ -11,7 +11,9 @@ from wla_api import check_predictions
 
 
 def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int):
-    """Function to generate output sequence using greedy algorithm """
+    """Function to generate output sequence using greedy algorithm 
+    
+    """
     memory = (model.encode(src, src_mask)).to(device)
     ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device)
     for i in range(max_len + 50):
@@ -36,6 +38,7 @@ def sequence_length_penalty(length: int, alpha: float=0.75) -> float:
 def beam_search(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int, beam_size: int, alpha:int=0.75):
     """Function to generate output sequence using beam search algorithm.
     If the beam size is 0, greedy decoding will be applied.
+    It returns a list with beam_size vectors, each representing
     """
     memory = (model.encode(src, src_mask)).to(device)
     
@@ -86,7 +89,7 @@ def num_to_char(output_idx_to_word_dict, tokens):
     return character_string
 
 
-def process_beam_results(predicted_strings_list, language, version):
+def process_predicted_results(predicted_strings_list, language, version):
     splitted_preds = [pred.split() for pred in predicted_strings_list]
     best_words = []
     for same_word_predictions in zip(*splitted_preds):
@@ -105,22 +108,31 @@ def translate(model: torch.nn.Module,
               beam_alpha: float,
               language: str=None,
               version: str=None):
+    """
+    Makes predictions and decodes predictions to text, using greedy decoding or beam search.
+    This is done on a sequence of words.
+    If language and version are defined, an API call is made to the ETCBC server to check idiomatic correctness of the words in a sequence.
+    The beam search potentially produces beam_size different words. They are all checked, and the first idiomatically correct word is returned.
+    If there is no idiomatically correct word available, the best predicted word is returned.
+
+    Output:
+    best_sequence: str  Complete sequence of words.
+    """
     model.eval()
     src = encoded_sentence.view(-1, 1).to(device)
     num_tokens = src.shape[0]
     src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool).to(device)
 
     if not beam_size:
-        tgt_tokens = greedy_decode(model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX['SOS'], OUTPUT_WORD_TO_IDX['EOS'])
-        return num_to_char(OUTPUT_IDX_TO_WORD, tgt_tokens)
+        tgt_tokens_list = [greedy_decode(model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX['SOS'], OUTPUT_WORD_TO_IDX['EOS'])]
     
     tgt_tokens_list = beam_search(
-        model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX['SOS'], OUTPUT_WORD_TO_IDX['EOS'], beam_size)
+        model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX['SOS'], OUTPUT_WORD_TO_IDX['EOS'], beam_size, beam_alpha)
     
     predicted_strings_list = [num_to_char(OUTPUT_IDX_TO_WORD, numerical_seq) for numerical_seq in tgt_tokens_list]
     predicted_strings_list = [mc_expand_whole_sequences(predicted) for predicted in predicted_strings_list]
     if language and version:
-        best_sequence = process_beam_results(predicted_strings_list, language, version)
+        best_sequence = process_predicted_results(predicted_strings_list, language, version)
     else:
         best_sequence = predicted_strings_list[0]
 
