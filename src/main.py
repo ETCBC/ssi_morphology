@@ -82,11 +82,6 @@ def main(args):
     parser.add_argument("-sz", metavar="beam_size", help="Optional: size of beam during beam size decoding. If 0 is chosen, decoding takes place with greedy decoding", type=int, default=3, nargs='?')
     parser.add_argument("-ba", metavar="beam_alpha", help="Optional: alpha value regulates the penalty for longer sequences during beam search.", type=float, default=0.75, nargs='?')
 
-    # Language and version together are used to make api calls to the ETCBC server to check whether a formed string is correct.
-    # If the check needs to be done, language and version have to be specified both. 
-    parser.add_argument("-la", metavar="language", help="Optional: language of the dataset, which is used for api calls to check correctness of the output.", type=float, default=None, nargs='?')
-    parser.add_argument("-ve", metavar="version", help="Optional: version of the ETCBC word grammar.", type=float, default=None, nargs='?')
-
     args = parser.parse_args()
     
     assert args.mo
@@ -110,13 +105,6 @@ def main(args):
             training_type = TrainingType.TWO_DATASETS_SIMULTANEOUSLY
         elif args.i and args.o:
             training_type = TrainingType.ONE_DATASET
-
-        if args.la and args.ve:
-            try:
-                language = Language[args.la]
-                word_grammar_version = WordGrammarVersion[args.ve]
-            except:
-                raise ValueError(f'{args.la} or {args.ve} is not valid.')
         
         assert training_type
 

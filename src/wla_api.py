@@ -53,7 +53,7 @@ class GrammarCorrectnessChecker:
     Approach:
        Make api call with list of predicted strings.
        The first one that has grammatically correct value back is returned.
-       If none of the predicted values is correct, the first in the list is returned with 'E' (error) attached to it.
+       If none of the predicted values is correct, the first in the list is returned with 'NOTCORRECT' attached to it.
     """
     def __init__(self, predictions, api_response):
         self.predictions = predictions
