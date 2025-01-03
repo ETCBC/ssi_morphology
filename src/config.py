@@ -21,6 +21,9 @@ PAD_IDX = 0
 SOS_token = 1
 EOS_token = 2
 
+# word level analysis (wla) url
+wla_url = 'https://jakob.etcbc.vu.nl/api/wla'
+
 # Data and models folders
 TRAIN_DATA_FOLDER = '../data'
 PREDICTION_DATA_FOLDER = '../new_data'

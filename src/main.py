@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from enums import TrainingType
+from enums import TrainingType, Language, WordGrammarVersion
 from pipeline import PipeLineTrain
 from pipeline_predict import PipeLinePredict
 from utils import str2bool
