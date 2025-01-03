@@ -8,10 +8,11 @@ class TrainingType(Enum):
 
 class Language(Enum):
     syriac = 1
-
+    hebrew = 2
 
 class WordGrammarVersion(Enum):
     SSI = 1
+    synvar = 2
 
 class APICodes(Enum):
     CORRECT = 1
