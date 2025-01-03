@@ -1,16 +1,20 @@
 import collections
 import os
+from typing import List
 
 import torch
 
-from config import device
+from config import device, wla_url
 from data import mc_expand
 from model_transformer import Seq2SeqTransformer
 from transformer_train_fns import generate_square_subsequent_mask
+from wla_api import check_predictions
 
 
 def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int):
-    """Function to generate output sequence using greedy algorithm """
+    """Function to generate output sequence using greedy algorithm 
+    
+    """
     memory = (model.encode(src, src_mask)).to(device)
     ys = torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device)
     for i in range(max_len + 50):
@@ -32,15 +36,12 @@ def greedy_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_sym
 def sequence_length_penalty(length: int, alpha: float=0.75) -> float:
     return ((5 + length) / (5 + 1)) ** alpha
     
-def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int, beam_size: int, alpha:int=0.75):
+def beam_search(model: torch.nn.Module, src, src_mask, max_len: int, start_symbol: int, end_symbol: int, beam_size: int, alpha:int=0.75):
     """Function to generate output sequence using beam search algorithm.
     If the beam size is 0, greedy decoding will be applied.
+    It returns a list with beam_size vectors, each representing
     """
-    src, src_mask = src.to(device), src_mask.to(device)
     memory = (model.encode(src, src_mask)).to(device)
-
-    if not beam_size:
-        return greedy_decode(model, src, src_mask, max_len, start_symbol, end_symbol)
     
     sequences = [[torch.ones(1, 1).fill_(start_symbol).type(torch.long).to(device), 0.0]]
     
@@ -72,27 +73,72 @@ def beam_decode(model: torch.nn.Module, src, src_mask, max_len: int, start_symbo
                     character_idcs = torch.cat([seq,
                         torch.ones(1, 1).type_as(src.data).fill_(character_idx)], dim=0)
                 candidate = [character_idcs, score + char_score]
-
                 all_candidates.append(candidate)
-        ordered = sorted(all_candidates, key=lambda tup:tup[1], reverse=True)
+       
+        ordered_seqs_with_scores = (sorted(all_candidates, key=lambda tup:tup[1], reverse=True))
+        sequences = ordered_seqs_with_scores[:beam_size]
                
-        sequences = ordered[:beam_size]
         if all([seq[0][-1].item() == end_symbol for seq in sequences]):
             break
-            
-    best = sorted(sequences, key=lambda tup:tup[1], reverse=True)[0][0]
-    return best
+
+    ordered_seqs_without_beam_scores = [seq[0].flatten() for seq in sequences]
+    return ordered_seqs_without_beam_scores
 
 
-def translate(model: torch.nn.Module, encoded_sentence: str, OUTPUT_IDX_TO_WORD: dict, OUTPUT_WORD_TO_IDX: dict, beam_size: int, beam_alpha: float):
+def num_to_char(output_idx_to_word_dict: dict, tokens) -> str:
+    character_string = ''.join([output_idx_to_word_dict[idx] for idx in list(tokens.cpu().numpy())]).replace('SOS', '').replace('EOS', '')
+    return character_string
+
+
+def process_predicted_results(predicted_strings_list: List[str], 
+                              language: str, 
+                              version: str) -> str:
+    splitted_preds = [pred.split() for pred in predicted_strings_list]
+    best_words = []
+    for same_word_predictions in zip(*splitted_preds):
+        same_word_predictions = list(set(same_word_predictions))
+        best_prediction = check_predictions(wla_url, language, version, same_word_predictions)
+        best_words.append(best_prediction)
+    best_sequence = ' '.join(best_words)
+    return best_sequence
+
+
+def translate(model: torch.nn.Module, 
+              encoded_sentence: str, 
+              OUTPUT_IDX_TO_WORD: dict, 
+              OUTPUT_WORD_TO_IDX: dict, 
+              beam_size: int, 
+              beam_alpha: float,
+              language: str=None,
+              version: str=None):
+    """
+    Makes predictions and decodes predictions to text, using greedy decoding or beam search.
+    This is done on a sequence of words.
+    If language and version are defined, an API call is made to the ETCBC server to check idiomatic correctness of the words in a sequence.
+    The beam search potentially produces beam_size different words. They are all checked, and the first idiomatically correct word is returned.
+    If there is no idiomatically correct word available, the best predicted word is returned. The API call is only done with new predictions, not during model evaluation on the test set.
+
+    Output:
+    best_sequence: str  Complete sequence of words.
+    """
     model.eval()
-    src = encoded_sentence.view(-1, 1)
+    src = encoded_sentence.view(-1, 1).to(device)
     num_tokens = src.shape[0]
-    src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool)
-    tgt_tokens = beam_decode(
-        model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX['SOS'], OUTPUT_WORD_TO_IDX['EOS'], beam_size).flatten()
+    src_mask = (torch.zeros(num_tokens, num_tokens)).type(torch.bool).to(device)
+
+    if not beam_size:
+        tgt_tokens_list = [greedy_decode(model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX['SOS'], OUTPUT_WORD_TO_IDX['EOS'])]
     
-    return ''.join([OUTPUT_IDX_TO_WORD[idx] for idx in list(tgt_tokens.cpu().numpy())]).replace('SOS', '').replace('EOS', '')
+    tgt_tokens_list = beam_search(
+        model, src, src_mask, num_tokens, OUTPUT_WORD_TO_IDX['SOS'], OUTPUT_WORD_TO_IDX['EOS'], beam_size, beam_alpha)
+    
+    predicted_strings_list = [num_to_char(OUTPUT_IDX_TO_WORD, numerical_seq) for numerical_seq in tgt_tokens_list]
+    predicted_strings_list = [mc_expand_whole_sequences(predicted) for predicted in predicted_strings_list]
+    if language and version:
+        best_sequence = process_predicted_results(predicted_strings_list, language, version)
+    else:
+        best_sequence = predicted_strings_list[0]
+    return best_sequence
     
     
 def evaluate_transformer_model(eval_path: str, 
@@ -158,6 +204,6 @@ def evaluate_transformer_model(eval_path: str,
         f.write(f'Correct distinct words {[correct_count / test_len for correct_count in correct_all_words]}\n')
 
     
-def mc_expand_whole_sequences(sequence):
+def mc_expand_whole_sequences(sequence: str) -> str:
     expanded_seq = ' '.join([mc_expand(word) for word in sequence.split()])
     return expanded_seq

@@ -23,7 +23,7 @@ class NewDataReader:
         self.data_ids2text = {}
         self.data_ids2labels = {}
         self.prepared_data = {}
-
+        
         self.read_data()
         self.make_sequences()
 
@@ -113,6 +113,8 @@ class ConfigParser:
         self.predict_idx = None
         self.beam_size = None
         self.beam_alpha = None
+        self.language = None
+        self.version = None
         
         self.get_file_names()
         self.model_config_data = self.import_model_config()
@@ -136,6 +138,8 @@ class ConfigParser:
             self.predict_idx = int(self.parsed_yaml.get('predict_idx', 0))
             self.beam_size = self.parsed_yaml.get('beam_size', 3)
             self.beam_alpha = float(self.parsed_yaml.get('beam_alpha', 0.75))
+            self.language = self.parsed_yaml.get('language', None)
+            self.version = self.parsed_yaml.get('version', None)
         except KeyError as err:
             print()
             print(err)
