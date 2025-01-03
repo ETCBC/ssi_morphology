@@ -1,5 +1,6 @@
 import collections
 import os
+from typing import List
 
 import torch
 
@@ -84,12 +85,14 @@ def beam_search(model: torch.nn.Module, src, src_mask, max_len: int, start_symbo
     return ordered_seqs_without_beam_scores
 
 
-def num_to_char(output_idx_to_word_dict, tokens):
+def num_to_char(output_idx_to_word_dict: dict, tokens) -> str:
     character_string = ''.join([output_idx_to_word_dict[idx] for idx in list(tokens.cpu().numpy())]).replace('SOS', '').replace('EOS', '')
     return character_string
 
 
-def process_predicted_results(predicted_strings_list, language, version):
+def process_predicted_results(predicted_strings_list: List[str], 
+                              language: str, 
+                              version: str) -> str:
     splitted_preds = [pred.split() for pred in predicted_strings_list]
     best_words = []
     for same_word_predictions in zip(*splitted_preds):
@@ -113,7 +116,7 @@ def translate(model: torch.nn.Module,
     This is done on a sequence of words.
     If language and version are defined, an API call is made to the ETCBC server to check idiomatic correctness of the words in a sequence.
     The beam search potentially produces beam_size different words. They are all checked, and the first idiomatically correct word is returned.
-    If there is no idiomatically correct word available, the best predicted word is returned.
+    If there is no idiomatically correct word available, the best predicted word is returned. The API call is only done with new predictions, not during model evaluation on the test set.
 
     Output:
     best_sequence: str  Complete sequence of words.
@@ -135,7 +138,6 @@ def translate(model: torch.nn.Module,
         best_sequence = process_predicted_results(predicted_strings_list, language, version)
     else:
         best_sequence = predicted_strings_list[0]
-
     return best_sequence
     
     
@@ -202,6 +204,6 @@ def evaluate_transformer_model(eval_path: str,
         f.write(f'Correct distinct words {[correct_count / test_len for correct_count in correct_all_words]}\n')
 
     
-def mc_expand_whole_sequences(sequence):
+def mc_expand_whole_sequences(sequence: str) -> str:
     expanded_seq = ' '.join([mc_expand(word) for word in sequence.split()])
     return expanded_seq

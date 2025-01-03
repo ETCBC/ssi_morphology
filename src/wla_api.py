@@ -1,6 +1,7 @@
 import json
 import requests
 from requests.packages.urllib3.util.retry import Retry
+from typing import List
 
 from config import wla_url
 from enums import APICodes
@@ -61,7 +62,7 @@ class GrammarCorrectnessChecker:
     def load_response(self):
         return json.loads(self.api_response.text)
     
-    def check_grammatical_correctness(self, response_dict):
+    def check_grammatical_correctness(self, response_dict: dict) -> tuple:
         results = response_dict.get('result', [])
         if not results:
             return self.predictions[0], APICodes['NOTCHECKED'].name
@@ -73,7 +74,7 @@ class GrammarCorrectnessChecker:
             return self.predictions[0], APICodes['NOTCORRECT'].name
 
 
-def check_predictions(wla_url, language, version, predictions):
+def check_predictions(wla_url: str, language: str, version: str, predictions: List[str]) -> str:
     jakob_caller = JakobCaller(wla_url, language, version, predictions)
     payload = jakob_caller.make_payload()
     response = jakob_caller.make_api_request(payload)
@@ -84,4 +85,6 @@ def check_predictions(wla_url, language, version, predictions):
     correctness_checker = GrammarCorrectnessChecker(predictions, response)
     loaded_response = correctness_checker.load_response()
     prediction, api_code = correctness_checker.check_grammatical_correctness(loaded_response)
+    if api_code == APICodes['CORRECT'].name:
+        return f'{prediction}'
     return f'{prediction}\t{api_code}'
