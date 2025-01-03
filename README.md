@@ -4,7 +4,10 @@ This repository contains code and data for the OpenSSI Hebrew/Syriac morphology 
 # Paper
 You can find the results of a number of our experiments in:
 
-Martijn Naaijer, Constantijn Sikkel, Mathias Coeckelberghs, Jisk Attema, Willem Th. van Peursen, A Transormer-based Parser for Syriac Morpology, 2023, To be published.
+Martijn Naaijer, Constantijn Sikkel, Mathias Coeckelberghs, Jisk Attema, Willem Th. van Peursen, A Transormer-based Parser for Syriac Morpology, 2023,  
+In: *Proceedings of the Ancient Language Processing Workshop*, pages 23–29, Varna, Bulgaria. INCOMA Ltd., Shoumen, Bulgaria.
+
+The Syriac input and output data we use in the paper can be found in the files s2-in and s2-out. Expanded and improved datasets that were created later are s3-in.txt and s3-out.txt.
 
 After cloning the repo and installing the dependencies, you can reproduce the experiments described in the paper in the following way:
 
@@ -115,7 +118,7 @@ You can make predictions using a trained model on new data, for which you need t
       Next to that, it contains the sequence length used to slice the text, and 2 dictionaries that are used to convert the input text to integers, and integers to output text.
 - ad 4. The name of the output file is optional in the YAML. If no output filename is given, the results are written to standard output. You can also indicate the index in the sequence for which you want the prediction (If this is not indicated, the predict_idx is set to 0.), the beam size (0 for greedy decoding), and the beam alpha value. The YAML file has the following structure:
 
-- ad 5. The final two arguments, language and version, are optional. If these arguments are added to the file, it will be checked whether the prediction of word is a grammatically correct, according to the ETCBC word grammar conventions. "language" is the language in which the text is written, and "version" is the version of the word grammar. Presently, it can only be used for the combination "syriac" and "SSI".
+- ad 5. The final two arguments, language and version, are optional. If these arguments are added to the file, it will be checked whether the prediction of word is a grammatically correct according to the ETCBC word grammar conventions. "language" is the language in which the text is written, and "version" is the version of the ETCBC word grammar. Presently, it can only be used for the combination "syriac" and "SSI" or the combination "hebrew" and "synvar". If the parsing is incorrect, "NOTCORRECT" is added to a word. It is still possible that the parsing is correct, but that the lexeme does not occur in the ETCBC lexicon. It should be added then.
 ```
 model_info:
     folder: name_of_folder_containing_model_and_config
