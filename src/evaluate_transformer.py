@@ -62,8 +62,8 @@ def beam_search(model: torch.nn.Module, src, src_mask, max_len: int, start_symbo
             scores, indices = torch.topk(prob_beam, beam_size)
 
             for idx in range(beam_size):
-                char_score = scores[0][idx].item()
-                character_idx = indices[0][idx].item()
+                char_score = scores[0][idx].detach().item()
+                character_idx = indices[0][idx].detach().item()
                 
                 if seq[-1].item() == end_symbol:
                     character_idcs = torch.cat([seq,
@@ -161,7 +161,7 @@ def evaluate_transformer_model(eval_path: str,
     loaded_transf = Seq2SeqTransformer(num_encoder_layers, num_decoder_layers, emb_size, 
                                        nhead, src_vocab_size, tgt_vocab_size, ffn_hid_dim)
                                  
-    loaded_transf.load_state_dict(torch.load(model_path_full))
+    loaded_transf.load_state_dict(torch.load(model_path_full, map_location=device))
     loaded_transf.eval()
 
     word_eval_dict = collections.defaultdict(lambda: collections.defaultdict(list))
@@ -178,7 +178,7 @@ def evaluate_transformer_model(eval_path: str,
             predicted = translate(loaded_transf.to(device), evaluation_data[i]['encoded_text'].to(device), OUTPUT_IDX_TO_WORD, OUTPUT_WORD_TO_IDX, beam_size, beam_alpha)
             true_val = evaluation_data[i]['output']
 
-            predicted = mc_expand_whole_sequences(predicted)
+            #predicted = mc_expand_whole_sequences(predicted)
             true_val = mc_expand_whole_sequences(true_val)
             f.write(f'Predicted {predicted}\n')
             f.write(f'Truevalue {true_val}\n')
