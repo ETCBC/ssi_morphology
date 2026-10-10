@@ -121,7 +121,8 @@ class DataReader:
             else:
                 grouped_verses = [verse_list[idx:idx+self.sequence_length] for idx in range(0, len(verse_list), self.sequence_length)]
                 if len(grouped_verses[-1]) < self.sequence_length:
-                    grouped_verses[-1] += grouped_verses.pop(-1)
+                    last = grouped_verses.pop()
+                    grouped_verses[-1].extend(last)
                 grouped_verses_dict[book] = grouped_verses
             
         return grouped_verses_dict

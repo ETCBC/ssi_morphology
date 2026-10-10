@@ -59,12 +59,12 @@ def edit_distance(t1, t2):
 
 
 def accuracy(target, labels):
-    tgt_out = labels[1:, :]
-    values, predictions = torch.max(target, -1)
+    tgt_out = labels[1:, :].cpu().tolist()
+    predictions = torch.max(target, -1)[1].cpu().tolist()
     wrong = 0
     for i in range(len(tgt_out)):
         wrong += edit_distance(tgt_out[i], predictions[i])
-    return 1 - (wrong / array(tgt_out.size()).prod()).item()
+    return 1 - wrong / (len(tgt_out) * len(tgt_out[0]))
 
 
 def criterion(f, target, labels):
